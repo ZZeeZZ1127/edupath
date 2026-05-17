@@ -1,0 +1,186 @@
+# ═══════════════════════════════════════════════════════════════
+# EduPath — Serverless Framework IaC
+# one command: serverless deploy
+# ═══════════════════════════════════════════════════════════════
+
+service: edupath
+frameworkVersion: "4"
+
+provider:
+  name: aws
+  region: us-east-1
+  runtime: python3.12
+  stage: ${opt:stage, 'prod'}
+
+  environment:
+    AWS_REGION: us-east-1
+    PLAN_BUCKET: !Ref PlansBucket
+
+  iam:
+    role:
+      statements:
+        # ── DynamoDB ────────────────────────────
+        - Effect: Allow
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+          Resource: !GetAtt ProfilesTable.Arn
+
+        # ── S3 (plans) ──────────────────────────
+        - Effect: Allow
+          Action:
+            - s3:GetObject
+            - s3:PutObject
+          Resource: !Sub "${PlansBucket.Arn}/plans/*"
+
+        # ── Bedrock ─────────────────────────────
+        - Effect: Allow
+          Action:
+            - bedrock:InvokeModel
+          Resource: arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-sonnet-4-5
+
+  # ── API Gateway defaults ──────────────────────
+  httpApi:
+    cors:
+      allowedOrigins:
+        - "*"
+      allowedMethods:
+        - GET
+        - POST
+        - OPTIONS
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+
+# ═══════════════════════════════════════════════════════════════
+# Lambda Functions
+# ═══════════════════════════════════════════════════════════════
+
+package:
+  individually: true
+
+functions:
+  # ── System 1: Recommendation ──────────────────
+
+  create_profile:
+    handler: recommendation/lambdas/create_profile/handler.handler
+    package:
+      patterns:
+        - recommendation/**
+        - shared/**
+    events:
+      - httpApi:
+          path: /profile
+          method: post
+
+  get_profile:
+    handler: recommendation/lambdas/get_profile/handler.handler
+    package:
+      patterns:
+        - recommendation/**
+        - shared/**
+    events:
+      - httpApi:
+          path: /profile
+          method: get
+
+  recommend:
+    handler: recommendation/lambdas/recommend/handler.handler
+    package:
+      patterns:
+        - recommendation/**
+        - shared/**
+    events:
+      - httpApi:
+          path: /recommend
+          method: post
+
+  select_track:
+    handler: recommendation/lambdas/select_track/handler.handler
+    package:
+      patterns:
+        - recommendation/**
+        - shared/**
+    events:
+      - httpApi:
+          path: /select-track
+          method: post
+
+  # ── System 2: Planning ────────────────────────
+
+  generate_plan:
+    handler: planning/lambdas/generate_plan/handler.handler
+    package:
+      patterns:
+        - planning/**
+        - shared/**
+    events:
+      - httpApi:
+          path: /plan
+          method: post
+
+  record_outcome:
+    handler: planning/lambdas/record_outcome/handler.handler
+    package:
+      patterns:
+        - planning/**
+        - shared/**
+    environment:
+      # Auto-constructed from the API Gateway's own URL.
+      # If this doesn't resolve at first deploy, set it manually and re-deploy.
+      RECOMMEND_ENDPOINT:
+        Fn::Join:
+          - ""
+          - - "https://"
+            - Ref: HttpApi
+            - ".execute-api."
+            - Ref: AWS::Region
+            - ".amazonaws.com/recommend"
+    events:
+      - httpApi:
+          path: /outcome
+          method: post
+
+# ═══════════════════════════════════════════════════════════════
+# Resources: DynamoDB + S3
+# ═══════════════════════════════════════════════════════════════
+
+resources:
+  Resources:
+    ProfilesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: studentProfiles
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+          - AttributeName: trackId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+          - AttributeName: trackId
+            KeyType: RANGE
+
+    PlansBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: edupath-plans-${aws:accountId}
+
+# ═══════════════════════════════════════════════════════════════
+# Output
+# ═══════════════════════════════════════════════════════════════
+
+outputs:
+  apiEndpoint:
+    description: API Gateway base URL — set this as VITE_API_BASE_URL in frontend/.env
+    Value:
+      Fn::Join:
+        - ""
+        - - "https://"
+          - Ref: HttpApi
+          - ".execute-api."
+          - Ref: AWS::Region
+          - ".amazonaws.com"
