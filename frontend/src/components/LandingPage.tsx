@@ -2,17 +2,18 @@ import {
   ArrowRightIcon,
   BrainCircuitIcon,
   DatabaseIcon,
-  GraduationCapIcon,
   GlobeIcon,
   LogInIcon,
   RouteIcon,
   SparklesIcon,
   UserPlusIcon,
 } from 'lucide-react';
+import EduPathBrand from './EduPathBrand';
 
 interface LandingPageProps {
   onLogin?: () => void;
   onSignup?: () => void;
+  onHome?: () => void;
 }
 
 const STEPS = [
@@ -33,17 +34,18 @@ const STEPS = [
   },
 ];
 
-export default function LandingPage({ onLogin = () => {}, onSignup = () => {} }: LandingPageProps) {
+export default function LandingPage({
+  onLogin = () => {},
+  onSignup = () => {},
+  onHome,
+}: LandingPageProps) {
   return (
     <div data-cmp="LandingPage" className="min-h-screen bg-background">
       <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-brand flex items-center justify-center shadow-custom">
-              <GraduationCapIcon className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-xl font-bold text-brand">EduPath</span>
-          </div>
+          <EduPathBrand
+            onHome={onHome ?? (() => window.scrollTo({ top: 0, behavior: `smooth` }))}
+          />
           <div className="flex items-center gap-3">
             <button
               onClick={onLogin}

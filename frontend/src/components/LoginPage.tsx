@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ArrowLeftIcon, GraduationCapIcon, SparklesIcon, ShieldCheckIcon, UsersIcon } from 'lucide-react';
+import { ArrowLeftIcon, SparklesIcon, ShieldCheckIcon, UsersIcon } from 'lucide-react';
+import EduPathBrand from './EduPathBrand';
 
 interface LoginPageProps {
   onLogin?: (email: string) => void;
@@ -15,7 +16,7 @@ export default function LoginPage({ onLogin = () => {}, onSignup = () => {}, onB
   return (
     <div data-cmp="LoginPage" className="min-h-screen bg-brand flex">
       {/* Left hero panel */}
-      <div className="hidden lg:flex flex-col justify-between w-1/2 p-12 relative overflow-hidden">
+      <div className="hidden lg:flex flex-col justify-between w-1/2 p-12 relative overflow-hidden select-none">
         {/* Background decoration */}
         <div className="absolute inset-0 overflow-hidden">
           <div
@@ -28,13 +29,7 @@ export default function LoginPage({ onLogin = () => {}, onSignup = () => {}, onB
           />
         </div>
 
-        {/* Logo */}
-        <div className="relative flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-custom">
-            <GraduationCapIcon className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-2xl font-bold text-white tracking-tight">EduPath</span>
-        </div>
+        <EduPathBrand onHome={onBack} variant="dark" className="relative" />
 
         {/* Hero text */}
         <div className="relative">
@@ -93,13 +88,7 @@ export default function LoginPage({ onLogin = () => {}, onSignup = () => {}, onB
             <ArrowLeftIcon className="w-4 h-4" />
             Back to home
           </button>
-          {/* Mobile logo */}
-          <div className="flex lg:hidden items-center gap-3 mb-6">
-            <div className="w-9 h-9 rounded-xl bg-brand flex items-center justify-center">
-              <GraduationCapIcon className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-xl font-bold text-brand tracking-tight">EduPath</span>
-          </div>
+          <EduPathBrand onHome={onBack} className="flex lg:hidden mb-6" iconSize="sm" />
 
           <div className="shadow-custom rounded-2xl bg-card p-8 border border-border">
             <h2 className="text-2xl font-bold text-foreground mb-1">Welcome back</h2>

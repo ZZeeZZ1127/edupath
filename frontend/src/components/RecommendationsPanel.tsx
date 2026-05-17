@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import type { Recommendation, ChatMessage, StudentProfile, CollegeFitItem } from '../types';
 import { mockRecommendations, mockCollegeFit, mockChatHistory } from '../data/mockData';
+import { getGradeShortLabel } from '../lib/grades';
 
 interface RecommendationsPanelProps {
   profile?: StudentProfile;
@@ -159,7 +160,9 @@ export default function RecommendationsPanel({
           </div>
           <div>
             <h1 className="text-lg font-bold text-foreground">Recommendations</h1>
-            <p className="text-xs text-muted-foreground">Personalized for {profile.name} · Grade {profile.grade}</p>
+            <p className="text-xs text-muted-foreground">
+              Personalized for {profile.name} · {getGradeShortLabel(profile.grade)}
+            </p>
           </div>
         </div>
         {/* Sub tabs */}

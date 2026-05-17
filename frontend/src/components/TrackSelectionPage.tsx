@@ -3,7 +3,6 @@ import {
   ArrowRightIcon,
   BrainCircuitIcon,
   ClockIcon,
-  GraduationCapIcon,
   HomeIcon,
   Loader2Icon,
   LogOutIcon,
@@ -14,6 +13,7 @@ import { toast } from 'sonner';
 import type { SavedPlan, StudentProfile, TrackRecommendation } from '../types';
 import { fetchTrackRecommendations } from '../services/api';
 import WorkflowStepper from './WorkflowStepper';
+import EduPathBrand from './EduPathBrand';
 
 interface TrackSelectionPageProps {
   profile: StudentProfile;
@@ -21,6 +21,7 @@ interface TrackSelectionPageProps {
   onSelectTrack: (track: TrackRecommendation) => void;
   onBack?: () => void;
   onGoToHub?: () => void;
+  onHome?: () => void;
   onLogout?: () => void;
 }
 
@@ -45,6 +46,7 @@ export default function TrackSelectionPage({
   onSelectTrack,
   onBack = () => {},
   onGoToHub = () => {},
+  onHome = () => {},
   onLogout = () => {},
 }: TrackSelectionPageProps) {
   const [tracks, setTracks] = useState<TrackRecommendation[]>([]);
@@ -80,10 +82,7 @@ export default function TrackSelectionPage({
   return (
     <div data-cmp="TrackSelectionPage" className="min-h-screen bg-background flex flex-col">
       <header className="flex items-center gap-3 px-6 py-4 border-b border-border bg-card">
-        <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center">
-          <GraduationCapIcon className="w-4.5 h-4.5 text-white" />
-        </div>
-        <span className="text-lg font-bold text-brand">EduPath</span>
+        <EduPathBrand onHome={onHome} iconSize="sm" />
         {pastPlans.length > 0 && (
           <button
             type="button"

@@ -40,6 +40,15 @@ export interface GuideStep {
   tips?: string[];
 }
 
+/** Bedrock-generated deep dive for one plan step (cached on the saved plan). */
+export interface StepDetail {
+  overview: string;
+  actionItems: string[];
+  tips: string[];
+  estimatedTime?: string;
+  generatedAt: string;
+}
+
 /** Second AI output: practical instructions sourced from the web */
 export interface ActionGuide {
   trackId: string;
@@ -115,6 +124,7 @@ export interface ActionItem {
 export interface PlanProgress {
   completedStepIds: string[];
   completedMilestoneIndexes: number[];
+  stepDetails?: Record<string, StepDetail>;
   updatedAt?: string;
 }
 

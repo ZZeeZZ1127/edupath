@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ArrowLeftIcon, GraduationCapIcon, SparklesIcon } from 'lucide-react';
+import { ArrowLeftIcon, SparklesIcon } from 'lucide-react';
+import EduPathBrand from './EduPathBrand';
 
 interface SignupPageProps {
   onSignup?: (email: string) => void;
@@ -27,12 +28,7 @@ export default function SignupPage({ onSignup = () => {}, onBack = () => {} }: S
           Back to home
         </button>
 
-        <div className="flex items-center gap-3 mb-8">
-          <div className="w-10 h-10 rounded-xl bg-brand flex items-center justify-center">
-            <GraduationCapIcon className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-xl font-bold text-brand">EduPath</span>
-        </div>
+        <EduPathBrand onHome={onBack} className="mb-8" />
 
         <div className="shadow-custom rounded-2xl bg-card p-8 border border-border">
           <h2 className="text-2xl font-bold text-foreground mb-1">Create your account</h2>

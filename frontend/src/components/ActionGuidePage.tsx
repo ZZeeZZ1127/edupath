@@ -4,7 +4,6 @@ import {
   CheckCircle2Icon,
   ExternalLinkIcon,
   GlobeIcon,
-  GraduationCapIcon,
   HomeIcon,
   Loader2Icon,
   LogOutIcon,
@@ -14,6 +13,7 @@ import { toast } from 'sonner';
 import type { ActionGuide, SavedPlan, StudentProfile, TrackRecommendation } from '../types';
 import { fetchActionGuide } from '../services/api';
 import WorkflowStepper from './WorkflowStepper';
+import EduPathBrand from './EduPathBrand';
 
 interface ActionGuidePageProps {
   profile: StudentProfile;
@@ -23,6 +23,7 @@ interface ActionGuidePageProps {
   viewingSaved?: boolean;
   onGuideReady?: (guide: ActionGuide) => void;
   onGoToHub?: () => void;
+  onHome?: () => void;
   onBack?: () => void;
   onLogout?: () => void;
   onStartOver?: () => void;
@@ -36,6 +37,7 @@ export default function ActionGuidePage({
   viewingSaved = false,
   onGuideReady = () => {},
   onGoToHub = () => {},
+  onHome = () => {},
   onBack = () => {},
   onLogout = () => {},
   onStartOver = () => {},
@@ -94,10 +96,7 @@ export default function ActionGuidePage({
   return (
     <div data-cmp="ActionGuidePage" className="min-h-screen bg-background flex flex-col">
       <header className="flex items-center gap-3 px-6 py-4 border-b border-border bg-card">
-        <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center">
-          <GraduationCapIcon className="w-4.5 h-4.5 text-white" />
-        </div>
-        <span className="text-lg font-bold text-brand">EduPath</span>
+        <EduPathBrand onHome={onHome} iconSize="sm" />
         <button
           type="button"
           onClick={onGoToHub}

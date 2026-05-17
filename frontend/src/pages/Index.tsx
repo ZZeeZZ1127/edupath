@@ -155,7 +155,11 @@ export default function Index() {
       <Toaster position="top-right" richColors />
 
       {page === `landing` && (
-        <LandingPage onLogin={() => setPage(`login`)} onSignup={() => setPage(`signup`)} />
+        <LandingPage
+          onLogin={() => setPage(`login`)}
+          onSignup={() => setPage(`signup`)}
+          onHome={() => setPage(`landing`)}
+        />
       )}
 
       {page === `login` && (
@@ -194,6 +198,7 @@ export default function Index() {
           onSelectTrack={handleSelectTrack}
           onBack={() => setPage(`profile`)}
           onGoToHub={() => goToHub()}
+          onHome={() => setPage(`landing`)}
           onLogout={handleLogout}
         />
       )}
@@ -208,6 +213,7 @@ export default function Index() {
           onGuideReady={handleGuideReady}
           onGoToHub={() => goToHub(viewingSaved ? `past-plans` : `home`)}
           onBack={viewingSaved ? handleBackFromSavedPlan : () => setPage(`recommendations`)}
+          onHome={() => setPage(`landing`)}
           onLogout={handleLogout}
           onStartOver={() => setPage(`profile`)}
         />
@@ -217,6 +223,7 @@ export default function Index() {
         <OnboardingPage
           session={session}
           onComplete={handleProfileComplete}
+          onHome={() => setPage(`landing`)}
           onLogout={handleLogout}
         />
       )}

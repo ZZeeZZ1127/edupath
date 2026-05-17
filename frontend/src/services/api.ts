@@ -1,11 +1,13 @@
 import type {
   ActionGuide,
+  GuideStep,
   SavedPlan,
+  StepDetail,
   StudentProfile,
   TrackRecommendation,
   UserSession,
 } from '../types';
-import { generateActionGuide, generateTrackRecommendations } from './mockAi';
+import { generateActionGuide, generateStepDetail, generateTrackRecommendations } from './mockAi';
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, ``) ?? ``;
 
@@ -101,6 +103,7 @@ export async function updatePastPlan(userId: string, updated: SavedPlan): Promis
     progress: {
       completedStepIds: updated.progress?.completedStepIds ?? [],
       completedMilestoneIndexes: updated.progress?.completedMilestoneIndexes ?? [],
+      stepDetails: updated.progress?.stepDetails,
       updatedAt: new Date().toISOString(),
     },
   };
@@ -165,6 +168,28 @@ export async function fetchActionGuide(
     }
   }
   return generateActionGuide(profile, track, pastPlans);
+}
+
+export async function fetchStepDetail(
+  profile: StudentProfile,
+  track: TrackRecommendation,
+  step: GuideStep,
+  guide: ActionGuide
+): Promise<StepDetail> {
+  if (API_BASE) {
+    try {
+      const data = await postJson<{ detail: StepDetail }>(`/step-detail`, {
+        profile,
+        track,
+        step,
+        guide,
+      });
+      return data.detail;
+    } catch {
+      /* fall through to mock */
+    }
+  }
+  return generateStepDetail(profile, track, step, guide);
 }
 
 export function persistSelectedTrack(userId: string, track: TrackRecommendation) {

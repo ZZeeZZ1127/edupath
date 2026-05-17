@@ -154,10 +154,28 @@
   }
   body {
     @apply bg-background text-foreground font-sans;
+    user-select: none;
+  }
+
+  input,
+  textarea,
+  select,
+  [contenteditable='true'] {
+    user-select: text;
+  }
+
+  input,
+  textarea {
+    cursor: text;
   }
 }
 
 @layer utilities {
+  .select-text {
+    user-select: text;
+    cursor: text;
+  }
+
   .shadow-custom {
     box-shadow: var(--shadow-x) var(--shadow-y) var(--shadow-blur) var(--shadow-spread) var(--shadow-color);
   }

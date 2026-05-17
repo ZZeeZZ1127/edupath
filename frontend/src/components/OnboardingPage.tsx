@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  GraduationCapIcon,
   ChevronRightIcon,
   ChevronLeftIcon,
   CheckIcon,
@@ -12,19 +11,22 @@ import {
 import { toast } from 'sonner';
 import type { StudentProfile, UserSession } from '../types';
 import { saveProfile } from '../services/api';
-import { GRADE_OPTIONS, getAgeBoundsForGrade } from '../lib/grades';
+import { AGE_INPUT_MAX, AGE_INPUT_MIN, GRADE_OPTIONS, getDefaultAgeForGrade } from '../lib/grades';
 import WorkflowStepper from './WorkflowStepper';
 import InterestPicker from './InterestPicker';
+import EduPathBrand from './EduPathBrand';
 
 interface OnboardingPageProps {
   session: UserSession;
   onComplete?: (profile: StudentProfile) => void;
+  onHome?: () => void;
   onLogout?: () => void;
 }
 
 export default function OnboardingPage({
   session,
   onComplete = () => {},
+  onHome = () => {},
   onLogout = () => {},
 }: OnboardingPageProps) {
   const [step, setStep] = useState(1);
@@ -39,22 +41,30 @@ export default function OnboardingPage({
 
   const totalSteps = 4;
 
-  const ageBounds = getAgeBoundsForGrade(grade);
-
   const handleGradeChange = (nextGrade: number) => {
     setGrade(nextGrade);
-    const bounds = getAgeBoundsForGrade(nextGrade);
-    const currentAge = parseInt(age, 10);
-    if (Number.isNaN(currentAge) || currentAge < bounds.min || currentAge > bounds.max) {
-      setAge(String(bounds.default));
+    if (!age.trim()) {
+      setAge(String(getDefaultAgeForGrade(nextGrade)));
     }
   };
 
+  const parseAge = () => {
+    const n = parseInt(age, 10);
+    if (Number.isNaN(n)) return null;
+    if (n < AGE_INPUT_MIN || n > AGE_INPUT_MAX) return null;
+    return n;
+  };
+
   const handleComplete = async () => {
+    const parsedAge = parseAge();
+    if (parsedAge === null) {
+      toast.error(`Please enter a valid age (${AGE_INPUT_MIN}–${AGE_INPUT_MAX})`);
+      return;
+    }
     const profile: StudentProfile = {
       name: name || `Student`,
       grade,
-      age: parseInt(age) || 17,
+      age: parsedAge,
       interests: selectedInterests,
       strengths: strengths.split(`,`).map((s) => s.trim()).filter(Boolean),
       goals,
@@ -75,10 +85,7 @@ export default function OnboardingPage({
   return (
     <div data-cmp="OnboardingPage" className="min-h-screen bg-background flex flex-col">
       <header className="flex items-center gap-3 px-8 py-5 border-b border-border bg-card">
-        <div className="w-8 h-8 rounded-lg bg-brand flex items-center justify-center">
-          <GraduationCapIcon className="w-4.5 h-4.5 text-white" />
-        </div>
-        <span className="text-lg font-bold text-brand">EduPath</span>
+        <EduPathBrand onHome={onHome} iconSize="sm" />
         <div className="ml-auto text-sm text-muted-foreground">Step {step} of {totalSteps}</div>
         <button
           onClick={onLogout}
@@ -157,8 +164,9 @@ export default function OnboardingPage({
                     type="number"
                     value={age}
                     onChange={(e) => setAge(e.target.value)}
-                    min={ageBounds.min}
-                    max={ageBounds.max}
+                    min={AGE_INPUT_MIN}
+                    max={AGE_INPUT_MAX}
+                    placeholder="Age"
                     className="w-full px-4 py-3 rounded-xl border border-border bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-all"
                   />
                 </div>
@@ -264,7 +272,19 @@ export default function OnboardingPage({
 
             {step < totalSteps ? (
               <button
-                onClick={() => setStep((s) => Math.min(totalSteps, s + 1))}
+                onClick={() => {
+                  if (step === 1) {
+                    if (!name.trim()) {
+                      toast.error(`Please enter your first name`);
+                      return;
+                    }
+                    if (parseAge() === null) {
+                      toast.error(`Please enter a valid age (${AGE_INPUT_MIN}–${AGE_INPUT_MAX})`);
+                      return;
+                    }
+                  }
+                  setStep((s) => Math.min(totalSteps, s + 1));
+                }}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 transition-all shadow-custom"
               >
                 Continue

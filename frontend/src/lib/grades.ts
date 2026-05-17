@@ -24,10 +24,20 @@ export function getGradeLabel(grade: number): string {
   return GRADE_OPTIONS.find((g) => g.value === grade)?.label ?? `Level ${grade}`;
 }
 
+/** Wide range for the age field — not tied to education level. */
+export const AGE_INPUT_MIN = 1;
+export const AGE_INPUT_MAX = 120;
+
+export function getDefaultAgeForGrade(grade: number): number {
+  if (grade >= 17) return 26;
+  if (grade >= 13) return 20;
+  if (grade >= 9) return 15;
+  return 12;
+}
+
+/** @deprecated Use AGE_INPUT_MIN/MAX and getDefaultAgeForGrade */
 export function getAgeBoundsForGrade(grade: number): { min: number; max: number; default: number } {
-  if (grade >= 17) return { min: 21, max: 45, default: 26 };
-  if (grade >= 13) return { min: 17, max: 28, default: 20 };
-  return { min: 10, max: 19, default: 17 };
+  return { min: AGE_INPUT_MIN, max: AGE_INPUT_MAX, default: getDefaultAgeForGrade(grade) };
 }
 
 export function getGradeShortLabel(grade: number): string {

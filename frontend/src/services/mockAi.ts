@@ -1,4 +1,11 @@
-import type { ActionGuide, SavedPlan, StudentProfile, TrackRecommendation } from '../types';
+import type {
+  ActionGuide,
+  GuideStep,
+  SavedPlan,
+  StepDetail,
+  StudentProfile,
+  TrackRecommendation,
+} from '../types';
 import { getGradeLabel } from '../lib/grades';
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -183,6 +190,105 @@ function buildResources(track: TrackRecommendation, profile: StudentProfile) {
     { title: `Niche — ${profile.interests[0] ?? 'programs'}`, url: `https://www.niche.com/colleges/search/?q=${interest}`, description: `Student reviews and fit signals` },
     ...common,
   ];
+}
+
+const STEP_DETAIL_LIBRARY: Record<string, Omit<StepDetail, 'generatedAt'>> = {
+  'track-internship:s1': {
+    overview: `Amazon Bedrock analyzed your profile and mapped three program tiers: national research internships (NIH SIP, RSI), regional hospital/university labs, and virtual or part-time opportunities. The goal this week is a realistic shortlist with deadlines you can actually hit — not a list of dream programs you will miss.`,
+    estimatedTime: `4–6 hours over 5–7 days`,
+    actionItems: [
+      `Create a spreadsheet with columns: Program name, URL, Grade eligibility, Deadline (date + timezone), Materials required, Recommenders needed, Status.`,
+      `Tier A (reach): Add 1 national program — e.g. NIH Summer Internship Program or Research Science Institute if you meet grade/age rules.`,
+      `Tier B (target): Add 1–2 regional options — hospital volunteer research, university faculty lab, or city science consortium programs.`,
+      `Tier C (safety): Add 1 local or virtual program with rolling or later deadlines so you still gain experience if Tier A/B are competitive.`,
+      `For each program, copy the official eligibility page and highlight requirements you already meet vs. gaps (GPA, coursework, citizenship).`,
+      `Email your school counselor or science teacher: ask if past students attended these programs and whether the school has a recommender workflow.`,
+    ],
+    tips: [
+      `Deadlines often fall in January–March for summer — note whether materials must be submitted by 11:59pm local or Eastern time.`,
+      `Many programs use separate portals (not Common App) — create accounts early to avoid last-day crashes.`,
+      `If you are under 16, filter for programs that explicitly accept your age — some labs require 16+ for safety/legal reasons.`,
+    ],
+  },
+  'track-internship:s2': {
+    overview: `Bedrock recommends treating your application packet as a small project: each document should tell the same story (your interest, preparation, and reliability) with different evidence. Start six weeks before the earliest deadline on your shortlist.`,
+    estimatedTime: `2–3 weeks (spread across 6 weeks before deadline)`,
+    actionItems: [
+      `Resume (1 page): Lead with education, then Research/STEM experience, then Activities. Quantify where possible (hours/week, outcomes).`,
+      `Activities list: Mirror language you will use in essays — one theme (e.g. pre-med, engineering) across all items.`,
+      `Transcript: Request official or unofficial copy per program rules; allow 5–10 school days for processing.`,
+      `Essays: Draft 2 versions — (1) why this program, (2) what you will contribute. Use specific examples from classes and extracurriculars.`,
+      `Recommenders: Ask 2 teachers (science + another) at least 3 weeks before deadline; provide resume, brag sheet, and program description.`,
+      `Create a shared folder (Google Drive) with PDFs named ProgramName_LastName_2025.pdf for each submission.`,
+    ],
+    tips: [
+      `Give recommenders a table: Program | Deadline | Portal link | What they need to upload.`,
+      `Avoid generic essays — name the program's mission and one unique opportunity (lab, mentor model, location).`,
+    ],
+  },
+  'track-internship:s3': {
+    overview: `Submission week is about confirmation and professionalism. Programs receive hundreds of applications; a complete, early file with proof of receipt reduces stress and shows maturity.`,
+    estimatedTime: `3–5 days around each deadline`,
+    actionItems: [
+      `Submit at least 48 hours before the listed deadline when the portal allows early submission.`,
+      `Screenshot or PDF the confirmation page immediately after each submit — include application ID if shown.`,
+      `Send a brief thank-you email to recommenders the day they submit (or when you see portal status "received").`,
+      `If status stays "incomplete" after 72 hours, email the program coordinator with your name, ID, and missing item.`,
+      `Log outcomes in your spreadsheet: Submitted date, Confirmation saved (Y/N), Follow-up sent (Y/N).`,
+    ],
+    tips: [
+      `Never pay an application fee unless you are certain the program is legitimate — verify .edu or .gov domains.`,
+      `Keep a single "master answers" doc for repeated essay prompts to speed secondary applications.`,
+    ],
+  },
+};
+
+function detailForStep(
+  profile: StudentProfile,
+  track: TrackRecommendation,
+  step: GuideStep
+): Omit<StepDetail, 'generatedAt'> {
+  const key = `${track.id}:${step.id}`;
+  const preset = STEP_DETAIL_LIBRARY[key];
+  if (preset) return preset;
+
+  const name = profile.name || `Student`;
+  const interest = primaryInterest(profile);
+  const activity = profile.extracurriculars[0] ?? `your main activity`;
+
+  return {
+    overview: `Amazon Bedrock generated this guidance for ${name} (${getGradeLabel(profile.grade)}) on the step "${step.title}" within the track "${track.title}". It connects your interests in ${interest}, your goal ("${profile.goals.slice(0, 100)}${profile.goals.length > 100 ? '…' : ''}"), and practical actions you can take this week.`,
+    estimatedTime: `3–5 hours`,
+    actionItems: [
+      `Block 90 minutes on your calendar this week dedicated only to this step.`,
+      `Write a one-paragraph success definition: what does "done" look like for "${step.title}"?`,
+      `List 3 obstacles (time, materials, people) and one mitigation for each.`,
+      step.description,
+      ...(step.tips ?? []).map((t) => `Tip: ${t}`),
+      track.id === `track-leadership`
+        ? `Document baseline metrics for ${activity} before you change anything (member count, events, funds).`
+        : `Save drafts and screenshots in one folder so you can reuse them for college applications.`,
+    ],
+    tips: [
+      `Share progress with a mentor or family member — accountability improves follow-through.`,
+      `If stuck for 20+ minutes, switch to a smaller sub-task and return to the main goal.`,
+      ...(step.tips ?? []),
+    ],
+  };
+}
+
+export async function generateStepDetail(
+  profile: StudentProfile,
+  track: TrackRecommendation,
+  step: GuideStep,
+  _guide: ActionGuide
+): Promise<StepDetail> {
+  await delay(1400);
+  const body = detailForStep(profile, track, step);
+  return {
+    ...body,
+    generatedAt: new Date().toISOString(),
+  };
 }
 
 function buildMilestones(track: TrackRecommendation): string[] {
