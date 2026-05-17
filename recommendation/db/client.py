@@ -13,3 +13,8 @@ def get_profile(user_id: str) -> dict | None:
 def set_current_track(user_id: str, track_status: dict) -> None:
     """Write the current track status for a student."""
     raise NotImplementedError("Waiting on DB interface from teammate")
+
+
+def append_conversation_history(user_id: str, entry: dict) -> None:
+    """Append an entry to the student's conversationHistory array."""
+    raise NotImplementedError("Waiting on DB interface from teammate")

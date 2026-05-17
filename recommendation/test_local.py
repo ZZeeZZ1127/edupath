@@ -33,6 +33,13 @@ def _mock_set_current_track(user_id: str, track_status: dict) -> None:
     _in_memory_db[user_id] = track_status
 
 
+_conversation_history_spy: list = []
+
+
+def _mock_append_conversation_history(user_id: str, entry: dict) -> None:
+    _conversation_history_spy.append({"userId": user_id, "entry": entry})
+
+
 # ── Sample Bedrock responses ────────────────────────────────────────────
 
 def _make_mock_tracks(grade, interests):
@@ -187,6 +194,7 @@ import bedrock_utils as bedrock_mod
 
 db_client.get_profile = _mock_get_profile
 db_client.set_current_track = _mock_set_current_track
+db_client.append_conversation_history = _mock_append_conversation_history
 
 _bedrock_call_log = []  # mutable list for spying on calls across tests
 
@@ -586,6 +594,75 @@ def test_quality_bar_profiles():
     print("  PASS test_quality_bar_profiles")
 
 
+def test_recommend_persists_conversation_history():
+    """Recommend handler appends conversation entry after generating tracks."""
+    _in_memory_db.clear()
+    _conversation_history_spy.clear()
+    create_profile(_api_gateway_event(MARIA), None)
+
+    event = _api_gateway_event({"userId": "maria-001"})
+    result = recommend(event, None)
+    _assert_200(result)
+
+    assert len(_conversation_history_spy) == 1
+    entry = _conversation_history_spy[0]["entry"]
+    assert entry["role"] == "assistant"
+    assert entry["action"] == "generated_tracks"
+    assert "3 track recommendations" in entry["summary"] or "Generated" in entry["summary"]
+    assert "timestamp" in entry
+    print("  PASS test_recommend_persists_conversation_history")
+
+
+def test_recalibration_persists_conversation_history():
+    """Recalibration appends conversation entry noting it was a recalibration."""
+    _in_memory_db.clear()
+    _conversation_history_spy.clear()
+    create_profile(_api_gateway_event(MARIA), None)
+
+    profile = _mock_get_profile("maria-001")
+    profile["currentTrackStatus"] = {
+        "track_id": "prev-track", "label": "Previous Path", "difficulty": 55.0,
+        "status": "completed", "selected_at": "2025-06-01T00:00:00Z",
+        "tasks": [
+            {"task_id": "t1", "completed": True},
+            {"task_id": "t2", "completed": True},
+        ],
+        "outcomes": [{"task_id": "t1", "result": "accepted"}]
+    }
+    _in_memory_db["maria-001"]["__profile"] = profile
+
+    event = _api_gateway_event({"userId": "maria-001"})
+    result = recommend(event, None)
+    _assert_200(result)
+
+    assert len(_conversation_history_spy) == 1
+    entry = _conversation_history_spy[0]["entry"]
+    assert entry["action"] == "generated_tracks"
+    assert "Recalibrated" in entry["summary"]
+    print("  PASS test_recalibration_persists_conversation_history")
+
+
+def test_conversation_history_non_fatal():
+    """Conversation history write failure does not break the recommend response."""
+    _in_memory_db.clear()
+    _conversation_history_spy.clear()
+    create_profile(_api_gateway_event(MARIA), None)
+
+    # Break the mock to simulate a DB failure
+    def _failing_history(user_id, entry):
+        raise RuntimeError("DB write failed")
+
+    db_client.append_conversation_history = _failing_history
+
+    try:
+        event = _api_gateway_event({"userId": "maria-001"})
+        result = recommend(event, None)
+        _assert_200(result)  # Still succeeds even though history write failed
+        print("  PASS test_conversation_history_non_fatal")
+    finally:
+        db_client.append_conversation_history = _mock_append_conversation_history
+
+
 def test_bedrock_json_parsing():
     """Verify JSON parsing: clean JSON, markdown-fenced JSON, and malformed handling."""
     import bedrock_utils
@@ -649,6 +726,9 @@ if __name__ == "__main__":
         test_build_recalibration_block,
         test_build_recalibration_block_empty,
         test_quality_bar_profiles,
+        test_recommend_persists_conversation_history,
+        test_recalibration_persists_conversation_history,
+        test_conversation_history_non_fatal,
         test_bedrock_json_parsing,
     ]
 
