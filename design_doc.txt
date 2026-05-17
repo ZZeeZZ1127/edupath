@@ -1,0 +1,380 @@
+EduPath
+AI-Powered K–12 to College Planning Assistant
+Scoped Design Document  |  AWS Hackathon 2025
+3 people  |  1.5 days  |  AWS beginners
+Mission: Give every student — especially first-generation learners — the same quality of academic guidance that wealthy families pay thousands of dollars for.
+
+Scope note: This document reflects the realistic hackathon build. Features are prioritized ruthlessly for a 5-minute demo. Anything not in the demo flow has been cut.
+1. What We Are Building
+EduPath is an AI-powered academic planning assistant that builds a persistent profile for each student and uses it to deliver personalized, grade-appropriate advice — from elementary school through college applications.
+
+The core differentiator is memory. Unlike generic chatbots, EduPath knows the student — their interests, grade level, past inputs, and goals — and references that context in every response.
+
+EduPath is split into two tightly integrated systems:
+
+System
+Purpose
+Key Outputs
+Recommendation System
+Reads the student’s profile from the database and generates recommended tracks — each a curated set of opportunities with difficulty-rated tasks. Adjusts track difficulty based on completion rate and application outcomes. Re-runs whenever a major DB event occurs (track completed or aborted).
+Recommended tracks (each with difficulty score 0–100), written to DB as current track status when student selects one
+Planning System
+Manages the active track: collects application materials and progress, records outcomes (accepted/rejected). Triggers System 1 recalculation on major state changes (track completed or aborted).
+Application progress tracker, required materials checklist, deadlines, step-by-step action items, outcome records (accepted/rejected) stored in DB
+
+What the Demo Will Show
+Student enters their name, grade, and interests during onboarding
+EduPath saves the profile to DynamoDB
+Recommendation System: Bedrock generates grade-appropriate recommendations — research programs, internships, and colleges tailored to the student’s profile
+Student selects a recommended opportunity (e.g., “I want to apply to Johns Hopkins”)
+Planning System: Bedrock generates a full application plan — materials needed, deadlines, progress tracker
+AI references past inputs to prove memory (“Based on your interest in biology...”)
+2. Two-System Architecture
+EduPath’s product is organized around two distinct but connected systems. Each has its own AI behavior, data inputs, and user-facing output.
+
+System 1 — Recommendation System
+What it does: Reads the student’s profile from the database and generates a set of recommended tracks — each track is a curated path of opportunities (research programs, internships, colleges, etc.) with tasks of varying difficulty. The student selects one active track at a time; System 1 also re-evaluates and recalibrates difficulty whenever a major change occurs (e.g., a track is completed or aborted).
+
+Inputs (from DynamoDB student profile)
+Student name, age, and current grade level
+Academic interests and strengths
+Extracurricular background
+Goals and milestones entered by the student
+Conversation history (last 3–5 exchanges)
+
+Recommendation Types
+Category
+Examples
+Grade Range
+Research programs
+RSI, PRIMES, local university labs, NIH summer programs
+Grade 9–12
+Internships
+Industry internships, hospital volunteering, nonprofit roles
+Grade 10–12
+College recommendations
+Fit schools based on interests, stats, and goals; match/safety/reach
+Grade 11–12
+Competitions
+Science Olympiad, debate tournaments, math competitions, hackathons
+Grade 6–11
+Extracurriculars
+Clubs, community service, leadership opportunities
+Grade 6–11
+
+AI Behavior
+Every recommendation must reference at least one specific detail from the student’s profile
+Recommendations are grade-appropriate — different outputs for Grade 6 vs Grade 12
+Returns structured, actionable tracks (not generic advice). Each track’s difficulty is derived from its tasks’ individual difficulty values (0–100) and stored in DB as part of the current track status.
+Quality bar: if the response could apply to any student, the prompt is not good enough
+Difficulty recalibration: when a track is completed or aborted, System 1 re-evaluates using completion rate and application outcomes (accepted/rejected) to adjust the difficulty of the next set of recommended tracks
+
+System 2 — Planning System
+What it does: Once the student selects an active track (from System 1’s recommendations), the Planning System takes ownership: it collects application materials, tracks progress, and records outcomes (accepted/rejected). All progress and results are stored in the database. On major state changes — track completed or aborted — System 2 triggers System 1 to recalculate the next recommended tracks.
+
+Inputs
+The selected opportunity (college name, internship, research program, etc.)
+Full student profile from DynamoDB (same as Recommendation System)
+Any previously generated plans (from S3)
+
+Plan Components
+Component
+Description
+Application progress
+Step-by-step checklist of where the student is in the application process
+Materials needed
+Essays, transcripts, recommendation letters, test scores, portfolios — specific to the opportunity
+Deadlines
+Application deadline, financial aid deadline, scholarship deadlines
+Action items
+What the student needs to do next, ordered by priority
+Match reasoning
+Why this opportunity fits the student’s profile specifically
+Outcome record
+Final result per application (accepted/rejected/pending) — stored in DB and used by System 1 to recalibrate difficulty for the next track
+
+AI Behavior
+Generates a structured plan document stored in S3 and rendered in the UI
+Plan is tied to the student’s Cognito identity for persistence
+Student can return to update progress on each item
+For college applications: produces a fit chart of 6–8 schools with match reasoning, requirements, and deadlines
+
+How the Two Systems Connect
+The Recommendation System (System 1) and Planning System (System 2) form a continuous feedback loop driven by the database:
+
+Step
+System
+What Happens
+1. Profile built
+Both
+Student completes onboarding form; profile (background, age, interests, goals) saved to DynamoDB
+2. Tracks generated
+Recommendation System
+System 1 reads profile from DB and generates a set of recommended tracks. Each track contains tasks with difficulty values (0–100); track-level difficulty is computed and stored in DB. Tracks are displayed to the student.
+3. Student selects a track
+Handoff
+Student picks one track (exactly one active track at a time). Track info and difficulty score are written to DB as the current track status. System 2 takes ownership.
+4. Planning & tracking
+Planning System
+System 2 asks the student for application materials, tracks progress, and records outcomes (accepted/rejected). All data stored in DB.
+5. System 1 recalibrates
+Recommendation System
+On major DB event (track completed or aborted), System 1 evaluates completion rate and application outcomes to recalculate and serve a new set of difficulty-adjusted recommended tracks. Loop restarts at step 2.
+3. Scope Decisions
+Every feature was evaluated against one question: does it appear in the 5-minute demo? If not, it was cut or deferred. This is not the full vision — it is the minimum build that wins.
+
+What We Are Keeping
+Feature
+System
+Why It Stays
+Who Builds It
+Student onboarding form
+Both
+Entry point to the demo — must exist
+Person C (Frontend)
+DynamoDB student profile
+Both
+Powers memory — feeds both systems
+Person A (Backend)
+Recommendation engine (Bedrock)
+Recommendation
+Core differentiator — personalized recs
+Person B (AI)
+Planning engine (Bedrock)
+Planning
+The action layer — turns recs into plans
+Person B (AI)
+Lambda + API Gateway
+Both
+Serverless backbone
+Person A (Backend)
+College fit chart generator
+Recommendation + Planning
+Wow moment for Grade 11–12 demo
+Person B (AI)
+Application plan generator
+Planning
+Shows the full workflow in action
+Person B (AI)
+Amplify frontend + chat UI
+Both
+Judges need something to look at
+Person C (Frontend)
+Cognito auth
+Both
+Ties profile and plans to user
+Person C (Frontend)
+S3 plan storage
+Planning
+Persists generated application plans
+Person A (Backend)
+
+What We Are Cutting
+Feature
+Why It Is Cut
+Fallback
+Textract document parsing
+Setup time + error risk not worth it for demo
+Manually type transcript highlights into onboarding
+Comprehend analysis
+Bedrock handles this inline
+Let Bedrock handle in its system prompt
+Step Functions pipeline
+Too complex for AWS beginners in 1.5 days
+Single Lambda handles the full flow
+SES email delivery
+Not visible in a live demo — low ROI
+Add only if ahead of schedule Day 1 evening
+Mobile responsive design
+Judges view on a laptop
+Build desktop-first, call it a web app
+Multi-student / parent view
+Adds complexity, not in demo scope
+Single student account for the demo
+Progress persistence UI
+Nice-to-have — plan is generated and shown, not yet interactive
+Display plan as structured output; interactive tracker is v2
+4. Scoped Architecture
+The architecture is intentionally minimal — only services that appear in the demo flow are included. Both systems share the same AWS backbone; they differ in Bedrock prompt templates and S3 usage.
+
+AWS Service
+Role in EduPath
+Used By
+Amazon Bedrock
+Core AI — powers both recommendation generation and plan generation
+Both systems
+AWS Lambda
+Orchestrates all logic — reads profile, calls Bedrock, writes results
+Both systems
+API Gateway
+HTTP entry point — all frontend calls route here
+Both systems
+Amazon DynamoDB
+Persistent student profile store — feeds both systems
+Both systems
+Amazon S3
+Stores generated application plans and college fit charts
+Planning System
+AWS Amplify
+Hosts the web app — built-in CI/CD and Cognito integration
+Both systems
+Amazon Cognito
+User login — ties session to persistent student profile and plans
+Both systems
+
+Simplified Data Flow
+Student logs in via Cognito (handled by Amplify UI component)
+Onboarding form sends profile data to POST /profile → Lambda → DynamoDB
+Chat sends student message → POST /recommend → Lambda retrieves profile from DynamoDB → calls Bedrock Recommendation prompt → returns personalized opportunities
+Student selects an opportunity → POST /plan → Lambda builds Planning prompt with opportunity + full profile → Bedrock generates application plan → plan stored in S3 and returned to frontend
+
+Key principle: One Lambda per endpoint. Keep it simple. No Step Functions, no queues. Just API Gateway → Lambda → DynamoDB + Bedrock.
+5. AI Design (Bedrock)
+Since the team’s strength is AI and prompt engineering, this is where the most effort goes. The two systems use distinct prompt templates that share the same profile context.
+
+Prompt Templates
+Template
+System
+Triggered When
+Output
+Grade-aware advice
+Recommendation
+Student sends any message in chat
+Personalized advice matching grade level, referencing interests from profile
+Opportunity recommendations
+Recommendation
+Student asks what to pursue (Grade 6–11)
+Specific research programs, competitions, internships, volunteer opportunities that fit their profile
+College fit chart
+Recommendation + Planning
+Student in Grade 11–12 mentions college
+Structured table of 6–8 colleges with match reasoning, requirements, and deadlines
+Application plan
+Planning
+Student selects a specific opportunity to pursue
+Step-by-step plan: materials needed, deadlines, progress checklist, action items
+
+System Prompt Structure
+Every Bedrock call includes the following context from DynamoDB:
+Student name, current grade, and age
+Interests and strengths (entered during onboarding)
+Last 3–5 advice exchanges (conversation memory)
+Any milestones or goals the student has entered
+For Planning System: the specific opportunity being planned for
+
+The system prompt instructs Bedrock to: always reference the student by name, connect advice to their stated interests, be specific rather than generic, and match tone to the student’s grade level.
+
+Quality bar: If Bedrock’s response could apply to any student, the prompt is not good enough. Every response must contain at least one reference to something specific in that student’s profile.
+6. Build Plan
+Three people, 1.5 days. Tasks are assigned by role and sequenced to minimize blocking. Both systems are built in parallel — the Recommendation System first since the Planning System depends on having something to plan for.
+
+Phase 1 — Core (Day 1, 8 AM to 12 PM)
+Goal: By noon on Day 1, a student should be able to create a profile and receive a Bedrock-generated recommendation.
+
+Person
+Morning Tasks
+Done When…
+Person A
+Set up DynamoDB table (studentProfiles) · Write createProfile and getProfile Lambda functions · Wire API Gateway routes POST /profile and GET /profile
+Postman can create and retrieve a student profile
+Person B
+Enable Bedrock model access · Write grade-aware advice prompt · Write opportunity recommendation prompt · Test 3 grade levels directly in Bedrock console
+Bedrock returns noticeably different, profile-specific recommendations for each grade level
+Person C
+Initialize Amplify project · Build onboarding form (name, grade, interests) · Add Cognito login · Build chat interface shell with two modes: Recommendations and My Plans
+Student can log in and see the chat UI with both system tabs
+
+Phase 2 — Integration (Day 1, 12 PM to 4 PM)
+Goal: By 4 PM, the full demo flow works end-to-end — onboarding → profile save → recommendations → plan generation.
+
+Person
+Afternoon Tasks
+Done When…
+Person A
+Write generateRecommendations Lambda · Write generatePlan Lambda · Store generated plans in S3 · Wire POST /recommend and POST /plan routes
+Lambda returns Bedrock recommendations referencing the student’s interests; plans are stored in S3
+Person B
+Integrate Bedrock into Lambda (not just Bedrock console) · Build college fit chart prompt · Build application plan prompt (materials, deadlines, checklist) · Save advice history to DynamoDB
+College fit chart appears in Recommendations tab; application plan appears in Plans tab for a Grade 12 student
+Person C
+Connect onboarding form to POST /profile · Connect chat to POST /recommend · Connect plan trigger to POST /plan · Display plan in Plans tab · Fix any CORS issues
+Full onboarding → recommendations → plan flow works in the browser
+
+Phase 3 — Polish (Day 1, 4 PM to 8 PM)
+Goal: Demo is smooth, UI is clean, and the Maria persona is pre-loaded with recommendations and a sample plan.
+
+Pre-seed Maria’s demo profile in DynamoDB — Grade 11, interests: biology and debate, goal: apply to college
+Pre-generate Maria’s recommendation output and application plan — cache in S3 as fallback
+Person C: add loading states, error messages, and polish the two-system UI (Recommendations view + Plans view)
+Person B: run 10 test conversations as Maria and refine prompts until every recommendation and plan is specific and impressive
+Person A: add SES email delivery only if the rest is working — otherwise skip
+All: run the full demo flow 5 times and fix anything that breaks
+
+Phase 4 — Demo Prep (Day 2, 8 AM to 12 PM)
+Hard rule: No new features after 9:30 AM on Day 2. Every hour spent coding instead of rehearsing costs more than it gains.
+
+8:00–9:30 AM: fix only critical bugs from Day 1 testing
+Pre-generate backup Bedrock responses for both systems in case of live latency
+Record a 2-minute screen capture of the perfect demo run — use as fallback if live demo breaks
+9:30–11:00 AM: rehearse the demo 5+ times — assign who speaks each part
+Prepare the opening story: why this matters, who it is for
+Prepare answers to 3 likely judge questions (see Section 8)
+11:00 AM onwards: submit, rest, and present
+7. Demo Script
+Persona: Maria, 17, Grade 11. First-generation college student. Her mom works two jobs as a nurse. She has never spoken to a college counselor.
+
+Opening (30 seconds — before touching the screen)
+“Maria’s mom works double shifts at the hospital. She has always wanted Maria to go to college — but she has never had time to figure out how. College counselors charge thousands of dollars. Maria’s school has one counselor for 400 students. So Maria is figuring it all out alone. EduPath is what we wish existed for her.”
+
+Live Demo Flow (4 minutes)
+Open EduPath — Maria’s profile is already loaded (pre-seeded in DynamoDB). Show the profile sidebar: Grade 11, interests in biology and debate.
+Navigate to Recommendations tab. Type: “What should I be doing this year to prepare for college?” — Bedrock responds with biology competitions, debate tournaments, and hospital volunteering, citing her specific interests.
+Bedrock also surfaces 3 college recommendations with match reasoning. Point out: “Notice it recommends pre-med programs — because it remembered she’s interested in biology.”
+Student clicks “Build a Plan” on one of the college recommendations. Navigate to Plans tab.
+Planning System: Bedrock generates a full application plan — required materials (essay prompts, rec letters, transcript), deadlines, and a step-by-step checklist specific to that school and Maria’s profile.
+Point out the memory across systems: “This is not a generic checklist. It knows she needs a science teacher recommendation because of her biology interest. That’s the power of a persistent profile.”
+
+Closing (30 seconds)
+“Maria’s mom will never see EduPath. But if she did, she would know her daughter is not alone anymore. That is Build with Gratitude. We build because someone worked hard so we could learn to code. And now we are using that code to pay it forward.”
+8. Likely Judge Questions
+Question
+Our Answer
+How is this different from ChatGPT?
+ChatGPT forgets you the moment the conversation ends. EduPath remembers you from Grade 1 through college — and it uses that memory across two coordinated systems: one to recommend what you should pursue, one to plan exactly how to get there.
+Why not just use a school counselor?
+The average public school has one counselor for 400 students. Private college counselors charge $2,000 to $10,000. EduPath gives every student counselor-quality guidance for free.
+How does the Recommendation System know what to suggest?
+It reads the student’s full profile — grade, age, interests, goals, and conversation history — and passes it to Bedrock with a prompt that forces specific, profile-referenced output. Generic responses fail our quality bar.
+How does the Planning System know what materials are needed?
+The planning prompt includes both the student’s profile and the specific opportunity (college, internship, program). Bedrock generates requirements tailored to that combination — not a generic checklist.
+How do you handle data privacy for minors?
+Cognito handles authentication so data is tied to a secure account. In production, we would add parental consent flows and store no PII beyond what students voluntarily enter. FERPA compliance would be a next-step requirement.
+What would you build next?
+Interactive progress tracking in the Planning System, document ingestion via Textract so students can upload transcripts, a parent dashboard, and a teacher view. The architecture already supports this — we scoped it out for the hackathon timeline.
+Which track are you submitting under?
+We qualify for all three. Our strongest case is Bedrock track — Bedrock powers both systems — but the serverless architecture is equally strong.
+9. Risks
+Risk
+Likelihood
+Mitigation
+Bedrock model access not approved in time
+Low
+Request access on Day 1 at 8 AM. Use Claude Haiku as fallback.
+Bedrock response is slow during live demo
+Medium
+Pre-generate Maria’s recommendation and plan responses. Display cached version if live call takes >5 seconds.
+CORS errors blocking frontend-backend
+High (first time)
+Fix immediately after Phase 1 integration. Budget 30 minutes for it.
+Recommendation prompts produce generic output
+Medium
+Person B owns prompt quality. Bar: every response must name something specific from Maria’s profile.
+Planning prompts produce generic checklists
+Medium
+Test plan output for 5 different opportunities. Each plan must differ based on the opportunity and profile.
+Two systems feel disconnected in demo
+Medium
+Practice the handoff moment carefully. The “Build a Plan” button is the demo’s pivot — it must be seamless.
+Scope creep eats demo prep time
+High
+Section 3 cut list is final. No new features after 9:30 AM on Day 2.
