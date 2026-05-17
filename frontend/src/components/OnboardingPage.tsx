@@ -12,31 +12,15 @@ import {
 import { toast } from 'sonner';
 import type { StudentProfile, UserSession } from '../types';
 import { saveProfile } from '../services/api';
+import { GRADE_OPTIONS, getAgeBoundsForGrade } from '../lib/grades';
 import WorkflowStepper from './WorkflowStepper';
+import InterestPicker from './InterestPicker';
 
 interface OnboardingPageProps {
   session: UserSession;
   onComplete?: (profile: StudentProfile) => void;
   onLogout?: () => void;
 }
-
-const INTEREST_OPTIONS = [
-  `Biology`, `Chemistry`, `Physics`, `Mathematics`, `Computer Science`,
-  `Engineering`, `Medicine / Pre-Med`, `Environmental Science`,
-  `Psychology`, `Economics`, `Political Science`, `History`,
-  `Literature / Writing`, `Art & Design`, `Music`, `Debate / Public Speaking`,
-  `Business`, `Sociology`, `Foreign Languages`, `Philosophy`,
-];
-
-const GRADE_OPTIONS = [
-  { value: 6, label: `6th Grade` },
-  { value: 7, label: `7th Grade` },
-  { value: 8, label: `8th Grade` },
-  { value: 9, label: `9th Grade (Freshman)` },
-  { value: 10, label: `10th Grade (Sophomore)` },
-  { value: 11, label: `11th Grade (Junior)` },
-  { value: 12, label: `12th Grade (Senior)` },
-];
 
 export default function OnboardingPage({
   session,
@@ -55,10 +39,15 @@ export default function OnboardingPage({
 
   const totalSteps = 4;
 
-  const toggleInterest = (interest: string) => {
-    setSelectedInterests((prev) =>
-      prev.includes(interest) ? prev.filter((i) => i !== interest) : [...prev, interest]
-    );
+  const ageBounds = getAgeBoundsForGrade(grade);
+
+  const handleGradeChange = (nextGrade: number) => {
+    setGrade(nextGrade);
+    const bounds = getAgeBoundsForGrade(nextGrade);
+    const currentAge = parseInt(age, 10);
+    if (Number.isNaN(currentAge) || currentAge < bounds.min || currentAge > bounds.max) {
+      setAge(String(bounds.default));
+    }
   };
 
   const handleComplete = async () => {
@@ -137,15 +126,29 @@ export default function OnboardingPage({
               </div>
               <div className="flex gap-4">
                 <div className="flex-1">
-                  <label className="block text-sm font-semibold text-foreground mb-2">Current grade</label>
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    Education level
+                  </label>
                   <select
                     value={grade}
-                    onChange={(e) => setGrade(parseInt(e.target.value))}
+                    onChange={(e) => handleGradeChange(parseInt(e.target.value, 10))}
                     className="w-full px-4 py-3 rounded-xl border border-border bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-all"
                   >
-                    {GRADE_OPTIONS.map((g) => (
-                      <option key={g.value} value={g.value}>{g.label}</option>
-                    ))}
+                    <optgroup label="Middle & high school">
+                      {GRADE_OPTIONS.filter((g) => g.group === `k12`).map((g) => (
+                        <option key={g.value} value={g.value}>{g.label}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Undergraduate">
+                      {GRADE_OPTIONS.filter((g) => g.group === `undergrad`).map((g) => (
+                        <option key={g.value} value={g.value}>{g.label}</option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Graduate">
+                      {GRADE_OPTIONS.filter((g) => g.group === `graduate`).map((g) => (
+                        <option key={g.value} value={g.value}>{g.label}</option>
+                      ))}
+                    </optgroup>
                   </select>
                 </div>
                 <div className="w-32">
@@ -154,8 +157,8 @@ export default function OnboardingPage({
                     type="number"
                     value={age}
                     onChange={(e) => setAge(e.target.value)}
-                    min={10}
-                    max={19}
+                    min={ageBounds.min}
+                    max={ageBounds.max}
                     className="w-full px-4 py-3 rounded-xl border border-border bg-card text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-all"
                   />
                 </div>
@@ -167,32 +170,11 @@ export default function OnboardingPage({
           <div className={step === 2 ? `fade-in` : `hidden`}>
             <div className="mb-8">
               <h2 className="text-3xl font-bold text-foreground mb-2">What are you passionate about?</h2>
-              <p className="text-muted-foreground">Select all that apply — this powers your personalized recommendations.</p>
+              <p className="text-muted-foreground">
+                Search our database or add your own — selections power your personalized recommendations.
+              </p>
             </div>
-            <div className="flex flex-wrap gap-2.5">
-              {INTEREST_OPTIONS.map((interest) => (
-                <button
-                  key={interest}
-                  onClick={() => toggleInterest(interest)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium border transition-all ${
-                    selectedInterests.includes(interest)
-                      ? `bg-primary text-primary-foreground border-primary shadow-custom`
-                      : `bg-card text-foreground border-border hover:border-primary hover:text-primary`
-                  }`}
-                >
-                  {selectedInterests.includes(interest) && (
-                    <CheckIcon className="w-3.5 h-3.5 inline mr-1.5" />
-                  )}
-                  {interest}
-                </button>
-              ))}
-            </div>
-            {selectedInterests.length > 0 && (
-              <div className="mt-4 p-3 rounded-xl bg-accent text-sm text-accent-foreground">
-                <SparklesIcon className="w-4 h-4 inline mr-1.5" />
-                {selectedInterests.length} interest{selectedInterests.length > 1 ? `s` : ``} selected — great start!
-              </div>
-            )}
+            <InterestPicker selected={selectedInterests} onChange={setSelectedInterests} />
           </div>
 
           {/* Step 3 — Strengths & Extracurriculars */}

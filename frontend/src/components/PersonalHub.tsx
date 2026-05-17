@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import ProfileSidebar from './ProfileSidebar';
 import HubHomePanel from './HubHomePanel';
 import PastPlansPanel from './PastPlansPanel';
 import ProfilePanel from './ProfilePanel';
+import PastPlanDashboard from './PastPlanDashboard';
 import type { HubTab, SavedPlan, StudentProfile } from '../types';
 
 interface PersonalHubProps {
@@ -10,8 +11,8 @@ interface PersonalHubProps {
   pastPlans: SavedPlan[];
   onLogout?: () => void;
   onUpdateProfile?: (profile: StudentProfile) => void;
+  onUpdatePlan?: (plan: SavedPlan) => Promise<void>;
   onNewTrack?: () => void;
-  onOpenPlan?: (plan: SavedPlan) => void;
   initialTab?: HubTab;
 }
 
@@ -20,16 +21,32 @@ export default function PersonalHub({
   pastPlans,
   onLogout = () => {},
   onUpdateProfile = () => {},
+  onUpdatePlan = async () => {},
   onNewTrack = () => {},
-  onOpenPlan = () => {},
   initialTab = `home`,
 }: PersonalHubProps) {
   const [activeTab, setActiveTab] = useState<HubTab>(initialTab);
   const [currentProfile, setCurrentProfile] = useState(profile);
+  const [selectedPlan, setSelectedPlan] = useState<SavedPlan | null>(null);
+
+  useEffect(() => {
+    setCurrentProfile(profile);
+  }, [profile]);
+
+  useEffect(() => {
+    if (!selectedPlan) return;
+    const fresh = pastPlans.find((p) => p.id === selectedPlan.id);
+    if (fresh) setSelectedPlan(fresh);
+  }, [pastPlans, selectedPlan?.id]);
 
   const handleUpdateProfile = (updated: StudentProfile) => {
     setCurrentProfile(updated);
     onUpdateProfile(updated);
+  };
+
+  const handlePlanUpdate = async (updated: SavedPlan) => {
+    setSelectedPlan(updated);
+    await onUpdatePlan(updated);
   };
 
   return (
@@ -39,19 +56,22 @@ export default function PersonalHub({
         profile={currentProfile}
         activeTab={activeTab}
         pastPlanCount={pastPlans.length}
-        onTabChange={(tab) => setActiveTab(tab as HubTab)}
+        onTabChange={(tab) => {
+          setActiveTab(tab as HubTab);
+          setSelectedPlan(null);
+        }}
         onNewTrack={onNewTrack}
         onLogout={onLogout}
       />
 
-      <main className="flex-1 min-w-0 overflow-hidden">
+      <main className="flex-1 min-w-0 overflow-hidden relative">
         <div className={`h-full ${activeTab === `home` ? `` : `hidden`}`}>
           <HubHomePanel
             profile={currentProfile}
             pastPlans={pastPlans}
             onNewTrack={onNewTrack}
             onViewPlans={() => setActiveTab(`past-plans`)}
-            onOpenPlan={onOpenPlan}
+            onOpenPlan={setSelectedPlan}
           />
         </div>
 
@@ -59,7 +79,7 @@ export default function PersonalHub({
           <PastPlansPanel
             profile={currentProfile}
             plans={pastPlans}
-            onOpenPlan={onOpenPlan}
+            onOpenPlan={setSelectedPlan}
             onNewTrack={onNewTrack}
           />
         </div>
@@ -68,6 +88,14 @@ export default function PersonalHub({
           <ProfilePanel profile={currentProfile} onUpdateProfile={handleUpdateProfile} />
         </div>
       </main>
+
+      {selectedPlan && (
+        <PastPlanDashboard
+          plan={selectedPlan}
+          onClose={() => setSelectedPlan(null)}
+          onUpdatePlan={handlePlanUpdate}
+        />
+      )}
     </div>
   );
 }

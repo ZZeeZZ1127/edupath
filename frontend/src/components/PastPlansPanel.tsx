@@ -6,6 +6,7 @@ import {
   SparklesIcon,
 } from 'lucide-react';
 import type { SavedPlan, StudentProfile } from '../types';
+import { overallPlanProgress } from '../lib/planProgress';
 
 interface PastPlansPanelProps {
   profile: StudentProfile;
@@ -118,6 +119,9 @@ export default function PastPlansPanel({
                     {plan.guide.estimatedDuration}
                   </span>
                   <span>{plan.guide.steps.length} steps</span>
+                  <span className="text-emerald font-medium">
+                    {overallPlanProgress(plan).percent}% progress
+                  </span>
                 </div>
               </button>
             ))}
