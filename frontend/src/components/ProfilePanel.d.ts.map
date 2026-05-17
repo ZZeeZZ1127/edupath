@@ -1,0 +1,1 @@
+{"version":3,"file":"ProfilePanel.d.ts","sourceRoot":"","sources":["ProfilePanel.tsx"],"names":[],"mappings":"AAWA,OAAO,KAAK,EAAE,cAAc,EAAE,MAAM,UAAU,CAAC;AAE/C,UAAU,iBAAiB;IACzB,OAAO,CAAC,EAAE,cAAc,CAAC;IACzB,eAAe,CAAC,EAAE,CAAC,OAAO,EAAE,cAAc,KAAK,IAAI,CAAC;CACrD;AAQD,MAAM,CAAC,OAAO,UAAU,YAAY,CAAC,EACnC,OAQC,EACD,eAA0B,GAC3B,EAAE,iBAAiB,2CAoLnB"}
