@@ -1,0 +1,45 @@
+{
+  "routes": [
+    {
+      "path": "/",
+      "src": "src/pages/Index.tsx"
+    }
+  ],
+  "components": [
+    {
+      "name": "Dashboard",
+      "src": "src/components/Dashboard.tsx",
+      "route": "/preview/dashboard"
+    },
+    {
+      "name": "LoginPage",
+      "src": "src/components/LoginPage.tsx",
+      "route": "/preview/login-page"
+    },
+    {
+      "name": "OnboardingPage",
+      "src": "src/components/OnboardingPage.tsx",
+      "route": "/preview/onboarding-page"
+    },
+    {
+      "name": "PlansPanel",
+      "src": "src/components/PlansPanel.tsx",
+      "route": "/preview/plans-panel"
+    },
+    {
+      "name": "ProfilePanel",
+      "src": "src/components/ProfilePanel.tsx",
+      "route": "/preview/profile-panel"
+    },
+    {
+      "name": "ProfileSidebar",
+      "src": "src/components/ProfileSidebar.tsx",
+      "route": "/preview/profile-sidebar"
+    },
+    {
+      "name": "RecommendationsPanel",
+      "src": "src/components/RecommendationsPanel.tsx",
+      "route": "/preview/recommendations-panel"
+    }
+  ]
+}
