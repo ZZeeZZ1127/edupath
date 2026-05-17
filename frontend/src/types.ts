@@ -112,6 +112,12 @@ export interface ActionItem {
   dueDate?: string;
 }
 
+export interface PlanProgress {
+  completedStepIds: string[];
+  completedMilestoneIndexes: number[];
+  updatedAt?: string;
+}
+
 /** Persisted track + action guide for AI growth memory */
 export interface SavedPlan {
   id: string;
@@ -121,6 +127,7 @@ export interface SavedPlan {
   profileSnapshot: StudentProfile;
   createdAt: string;
   status: 'active' | 'completed';
+  progress?: PlanProgress;
 }
 
 export type AppPage =

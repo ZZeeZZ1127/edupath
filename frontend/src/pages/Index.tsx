@@ -23,6 +23,7 @@ import {
   persistSelectedTrack,
   savePastPlan,
   saveProfile,
+  updatePastPlan,
 } from '../services/api';
 import { mariaProfile } from '../data/mockData';
 
@@ -120,19 +121,20 @@ export default function Index() {
       if (savedPlanKeyRef.current === saveKey) return;
       savedPlanKeyRef.current = saveKey;
 
-      const plan = buildSavedPlan(session.userId, profile, selectedTrack, guide);
+      const existing = pastPlans.find((p) => p.track.id === selectedTrack.id);
+      const plan = buildSavedPlan(session.userId, profile, selectedTrack, guide, existing?.id);
+      if (existing?.progress) plan.progress = existing.progress;
       await savePastPlan(plan);
       await refreshPastPlans(session.userId);
       toast.success(`Plan saved — AI will remember this for your next recommendations`);
     },
-    [session, profile, selectedTrack, viewingSaved, refreshPastPlans]
+    [session, profile, selectedTrack, viewingSaved, pastPlans, refreshPastPlans]
   );
 
-  const handleOpenPastPlan = (plan: SavedPlan) => {
-    setSelectedTrack(plan.track);
-    setCachedGuide(plan.guide);
-    setViewingSaved(true);
-    setPage(`action-guide`);
+  const handleUpdatePlan = async (plan: SavedPlan) => {
+    if (!session) return;
+    await updatePastPlan(session.userId, plan);
+    await refreshPastPlans(session.userId);
   };
 
   const handleUpdateProfile = async (updated: StudentProfile) => {
@@ -181,7 +183,7 @@ export default function Index() {
             setCachedGuide(null);
             setPage(`recommendations`);
           }}
-          onOpenPlan={handleOpenPastPlan}
+          onUpdatePlan={handleUpdatePlan}
         />
       )}
 

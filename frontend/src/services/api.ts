@@ -64,7 +64,22 @@ export async function loadPastPlans(userId: string): Promise<SavedPlan[]> {
   const raw = localStorage.getItem(storageKey(userId, `pastPlans`));
   if (!raw) return [];
   const plans = JSON.parse(raw) as SavedPlan[];
-  return plans.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const deduped = dedupePastPlans(plans);
+  if (deduped.length !== plans.length) {
+    localStorage.setItem(storageKey(userId, `pastPlans`), JSON.stringify(deduped));
+  }
+  return deduped;
+}
+
+function dedupePastPlans(plans: SavedPlan[]): SavedPlan[] {
+  const byTrack = new Map<string, SavedPlan>();
+  for (const plan of plans) {
+    const prev = byTrack.get(plan.track.id);
+    if (!prev || plan.createdAt > prev.createdAt) {
+      byTrack.set(plan.track.id, plan);
+    }
+  }
+  return [...byTrack.values()].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 export async function savePastPlan(plan: SavedPlan): Promise<void> {
@@ -73,24 +88,44 @@ export async function savePastPlan(plan: SavedPlan): Promise<void> {
     return;
   }
   const existing = await loadPastPlans(plan.userId);
-  const next = [plan, ...existing.filter((p) => p.id !== plan.id)];
+  const next = [
+    plan,
+    ...existing.filter((p) => p.id !== plan.id && p.track.id !== plan.track.id),
+  ];
   localStorage.setItem(storageKey(plan.userId, `pastPlans`), JSON.stringify(next));
+}
+
+export async function updatePastPlan(userId: string, updated: SavedPlan): Promise<void> {
+  const withTimestamp: SavedPlan = {
+    ...updated,
+    progress: {
+      completedStepIds: updated.progress?.completedStepIds ?? [],
+      completedMilestoneIndexes: updated.progress?.completedMilestoneIndexes ?? [],
+      updatedAt: new Date().toISOString(),
+    },
+  };
+  await savePastPlan(withTimestamp);
 }
 
 export function buildSavedPlan(
   userId: string,
   profile: StudentProfile,
   track: TrackRecommendation,
-  guide: ActionGuide
+  guide: ActionGuide,
+  existingId?: string
 ): SavedPlan {
   return {
-    id: `plan-${Date.now()}`,
+    id: existingId ?? `plan-${track.id}-${Date.now()}`,
     userId,
     track,
     guide,
     profileSnapshot: profile,
     createdAt: new Date().toISOString(),
     status: `active`,
+    progress: {
+      completedStepIds: [],
+      completedMilestoneIndexes: [],
+    },
   };
 }
 

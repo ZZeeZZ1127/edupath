@@ -1,4 +1,5 @@
 import type { ActionGuide, SavedPlan, StudentProfile, TrackRecommendation } from '../types';
+import { getGradeLabel } from '../lib/grades';
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -41,7 +42,7 @@ export async function generateTrackRecommendations(
       id: `track-internship`,
       title: `Apply to a competitive summer program or internship`,
       summary: `Target one high-impact program (NIH SIP, RSI, or a local lab) aligned with your grade and interests.`,
-      matchReason: `Grade ${profile.grade} is the ideal window to secure hands-on experience that admissions readers recognize.`,
+      matchReason: `${getGradeLabel(profile.grade)} is the ideal window to secure hands-on experience that admissions readers recognize.`,
       timeHorizon: `4–6 weeks to apply`,
       difficulty: `advanced`,
       category: `internship`,
@@ -89,7 +90,7 @@ export async function generateActionGuide(
       prerequisites: [`Stable weekly time block (4–6 hrs)`, `Faculty or mentor contact`, `Basic lab safety if wet lab`],
     },
     'track-internship': {
-      overview: `How to identify, apply to, and follow up on competitive programs matched to Grade ${profile.grade} students.`,
+      overview: `How to identify, apply to, and follow up on competitive programs matched to ${getGradeLabel(profile.grade)} students.`,
       estimatedDuration: `4–6 weeks (application cycle)`,
       prerequisites: [`Updated resume/activities list`, `2 recommenders identified`, `Transcript request plan`],
     },

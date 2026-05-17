@@ -11,6 +11,7 @@ import {
   PlusCircleIcon,
 } from 'lucide-react';
 import type { StudentProfile } from '../types';
+import { getGradeShortLabel } from '../lib/grades';
 
 interface ProfileSidebarProps {
   profile?: StudentProfile;
@@ -52,16 +53,7 @@ export default function ProfileSidebar({
   onNewTrack = () => {},
 }: ProfileSidebarProps) {
   const navItems = variant === `hub` ? hubNav : dashboardNav;
-  const gradeLabel =
-    profile.grade <= 8
-      ? `Middle School`
-      : profile.grade === 12
-        ? `Senior`
-        : profile.grade === 11
-          ? `Junior`
-          : profile.grade === 10
-            ? `Sophomore`
-            : `Freshman`;
+  const gradeLabel = getGradeShortLabel(profile.grade);
 
   return (
     <div data-cmp="ProfileSidebar" className="flex flex-col h-full bg-sidebar w-72 shrink-0">
@@ -85,7 +77,7 @@ export default function ProfileSidebar({
           <div className="min-w-0">
             <div className="text-sidebar-primary font-semibold text-sm truncate">{profile.name}</div>
             <div className="text-sidebar-foreground/60 text-xs">
-              Grade {profile.grade} · {gradeLabel}
+              {gradeLabel}
             </div>
           </div>
         </div>
@@ -142,14 +134,18 @@ export default function ProfileSidebar({
             Your Interests
           </div>
           <div className="px-3 flex flex-wrap gap-1.5">
-            {profile.interests.slice(0, 6).map((interest) => (
-              <span
-                key={interest}
-                className="text-xs px-2.5 py-1 rounded-full bg-white/10 text-sidebar-foreground/80 border border-sidebar-border"
-              >
-                {interest}
-              </span>
-            ))}
+            {profile.interests.length === 0 ? (
+              <p className="text-xs text-sidebar-foreground/50">Add interests in My Profile</p>
+            ) : (
+              profile.interests.slice(0, 6).map((interest) => (
+                <span
+                  key={interest}
+                  className="text-xs px-2.5 py-1 rounded-full bg-white/10 text-sidebar-foreground/80 border border-sidebar-border"
+                >
+                  {interest}
+                </span>
+              ))
+            )}
           </div>
         </div>
 
@@ -158,12 +154,16 @@ export default function ProfileSidebar({
             Activities
           </div>
           <div className="px-3 flex flex-col gap-1.5">
-            {profile.extracurriculars.slice(0, 4).map((activity) => (
-              <div key={activity} className="flex items-center gap-2 text-xs text-sidebar-foreground/70">
-                <TrophyIcon className="w-3 h-3 shrink-0 text-amber" />
-                <span className="truncate">{activity}</span>
-              </div>
-            ))}
+            {profile.extracurriculars.length === 0 ? (
+              <p className="text-xs text-sidebar-foreground/50">Add activities in My Profile</p>
+            ) : (
+              profile.extracurriculars.slice(0, 4).map((activity) => (
+                <div key={activity} className="flex items-center gap-2 text-xs text-sidebar-foreground/70">
+                  <TrophyIcon className="w-3 h-3 shrink-0 text-amber" />
+                  <span className="truncate">{activity}</span>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </nav>
