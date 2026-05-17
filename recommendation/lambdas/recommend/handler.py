@@ -1,5 +1,6 @@
 import json
 import uuid
+from datetime import datetime, timezone
 from db import client as db
 from bedrock_utils import call_bedrock
 
@@ -71,6 +72,9 @@ def handler(event, context):
         for track in tracks:
             track["difficulty"] = _compute_track_difficulty(track)
 
+        # Persist conversation history so future prompts have memory
+        _append_conversation_entry(user_id, profile, tracks, track_status)
+
         return {
             "statusCode": 200,
             "headers": {"Access-Control-Allow-Origin": "*"},
@@ -136,3 +140,23 @@ def _compute_track_difficulty(track: dict) -> float:
     if not tasks:
         return 0.0
     return round(sum(t["difficulty"] for t in tasks) / len(tasks), 1)
+
+
+def _append_conversation_entry(user_id: str, profile: dict, tracks: list, track_status: dict | None) -> None:
+    """Append a conversation history entry summarizing the generated tracks."""
+    try:
+        labels = [t["label"] for t in tracks]
+        if track_status and track_status.get("status") in ("completed", "aborted"):
+            summary = f"Recalibrated tracks after {track_status['status']} track: {', '.join(labels)}"
+        else:
+            summary = f"Generated {len(tracks)} track recommendations: {', '.join(labels)}"
+
+        entry = {
+            "role": "assistant",
+            "action": "generated_tracks",
+            "summary": summary,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        db.append_conversation_history(user_id, entry)
+    except Exception as e:
+        print("Warning: failed to append conversation history:", e)

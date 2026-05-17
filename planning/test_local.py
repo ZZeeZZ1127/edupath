@@ -102,6 +102,13 @@ def _mock_record_outcome(user_id: str, task_id: str, result: str) -> None:
                 break
 
 
+_conversation_history_spy: list = []
+
+
+def _mock_append_conversation_history(user_id: str, entry: dict) -> None:
+    _conversation_history_spy.append({"userId": user_id, "entry": entry})
+
+
 def _mock_save_plan(user_id: str, track_id: str, plan: dict) -> str:
     key = f"plans/{user_id}/{track_id}.json"
     _in_memory_s3[key] = plan
@@ -220,6 +227,7 @@ _ORIGINAL_CALL_BEDROCK = bedrock_mod.call_bedrock
 db_client.get_profile = _mock_get_profile
 db_client.set_current_track = _mock_set_current_track
 db_client.record_outcome = _mock_record_outcome
+db_client.append_conversation_history = _mock_append_conversation_history
 bedrock_mod.call_bedrock = _mock_call_bedrock
 s3_mod.save_plan = _mock_save_plan
 s3_mod.load_plan = _mock_load_plan
@@ -739,6 +747,122 @@ def test_all_tasks_resolved():
     print("  PASS test_all_tasks_resolved")
 
 
+def test_generate_plan_persists_conversation_history():
+    """Generate plan appends a conversation entry after Bedrock response."""
+    _in_memory_db.clear()
+    _in_memory_s3.clear()
+    _conversation_history_spy.clear()
+    _in_memory_db["maria-001"] = _copy(_MARIA)
+
+    event = _api_gateway_event({"userId": "maria-001"})
+    result = generate_plan(event, None)
+    _assert_200(result)
+
+    assert len(_conversation_history_spy) == 1
+    entry = _conversation_history_spy[0]["entry"]
+    assert entry["role"] == "assistant"
+    assert entry["action"] == "generated_plan"
+    assert "4 tasks" in entry["summary"]
+    assert "college fit" in entry["summary"].lower()
+    assert "timestamp" in entry
+    print("  PASS test_generate_plan_persists_conversation_history")
+
+
+def test_record_outcome_persists_conversation_history():
+    """Recording an outcome appends a conversation entry."""
+    _in_memory_db.clear()
+    _conversation_history_spy.clear()
+    _trigger_calls.clear()
+    _in_memory_db["maria-001"] = _copy(_MARIA)
+
+    event = _api_gateway_event({
+        "userId": "maria-001",
+        "task_id": "st-1",
+        "result": "accepted"
+    })
+    result = record_outcome(event, None)
+    _assert_200(result)
+
+    assert len(_conversation_history_spy) == 1
+    entry = _conversation_history_spy[0]["entry"]
+    assert entry["action"] == "track_accepted"
+    print("  PASS test_record_outcome_persists_conversation_history")
+
+
+def test_track_completion_persists_conversation_history():
+    """Track completion appends a conversation entry."""
+    _in_memory_db.clear()
+    _conversation_history_spy.clear()
+    _trigger_calls.clear()
+
+    profile = _copy(_MARIA)
+    for task in profile["currentTrackStatus"]["tasks"]:
+        if task["task_id"] in ("st-1", "st-2", "st-3"):
+            task["completed"] = True
+    profile["currentTrackStatus"]["outcomes"] = [
+        {"task_id": "st-1", "result": "accepted"},
+        {"task_id": "st-2", "result": "accepted"},
+        {"task_id": "st-3", "result": "accepted"},
+    ]
+    _in_memory_db["maria-001"] = profile
+
+    event = _api_gateway_event({
+        "userId": "maria-001",
+        "task_id": "st-4",
+        "result": "accepted"
+    })
+    result = record_outcome(event, None)
+    _assert_200(result)
+
+    assert len(_conversation_history_spy) == 1
+    entry = _conversation_history_spy[0]["entry"]
+    assert entry["action"] == "track_completed"
+    assert "completed" in entry["summary"]
+    print("  PASS test_track_completion_persists_conversation_history")
+
+
+def test_track_abort_persists_conversation_history():
+    """Track abort appends a conversation entry."""
+    _in_memory_db.clear()
+    _conversation_history_spy.clear()
+    _trigger_calls.clear()
+    _in_memory_db["maria-001"] = _copy(_MARIA)
+
+    event = _api_gateway_event({
+        "userId": "maria-001",
+        "abort_track": True
+    })
+    result = record_outcome(event, None)
+    _assert_200(result)
+
+    assert len(_conversation_history_spy) == 1
+    entry = _conversation_history_spy[0]["entry"]
+    assert entry["action"] == "track_aborted"
+    assert "aborted" in entry["summary"]
+    print("  PASS test_track_abort_persists_conversation_history")
+
+
+def test_conversation_history_non_fatal_s2():
+    """Conversation history write failure does not break generate_plan."""
+    _in_memory_db.clear()
+    _in_memory_s3.clear()
+    _conversation_history_spy.clear()
+    _in_memory_db["maria-001"] = _copy(_MARIA)
+
+    def _failing_history(user_id, entry):
+        raise RuntimeError("DB write failed")
+
+    db_client.append_conversation_history = _failing_history
+
+    try:
+        event = _api_gateway_event({"userId": "maria-001"})
+        result = generate_plan(event, None)
+        _assert_200(result)  # Still succeeds
+        print("  PASS test_conversation_history_non_fatal_s2")
+    finally:
+        db_client.append_conversation_history = _mock_append_conversation_history
+
+
 def test_quality_bar_plan_personalization():
     """Verify that the mock plan generator produces different output for different students."""
     _in_memory_db.clear()
@@ -797,6 +921,11 @@ if __name__ == "__main__":
         test_build_plan_prompt_senior,
         test_build_plan_prompt_junior,
         test_bedrock_json_parsing_and_retry,
+        test_generate_plan_persists_conversation_history,
+        test_record_outcome_persists_conversation_history,
+        test_track_completion_persists_conversation_history,
+        test_track_abort_persists_conversation_history,
+        test_conversation_history_non_fatal_s2,
         test_all_tasks_resolved,
         test_quality_bar_plan_personalization,
     ]

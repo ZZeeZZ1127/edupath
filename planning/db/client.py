@@ -18,3 +18,8 @@ def set_current_track(user_id: str, track_status: dict) -> None:
 def record_outcome(user_id: str, task_id: str, result: str) -> None:
     """Append an outcome entry to currentTrackStatus.outcomes."""
     raise NotImplementedError("Waiting on DB interface from teammate")
+
+
+def append_conversation_history(user_id: str, entry: dict) -> None:
+    """Append an entry to the student's conversationHistory array."""
+    raise NotImplementedError("Waiting on DB interface from teammate")

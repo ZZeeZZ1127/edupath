@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timezone
 
 from db import client as db
 from bedrock_utils import call_bedrock
@@ -128,6 +129,8 @@ def handler(event, context):
 
         save_plan(user_id, track_status["track_id"], plan)
 
+        _append_plan_entry(user_id, profile, track_status, plan)
+
         return {
             "statusCode": 200,
             "headers": {"Access-Control-Allow-Origin": "*"},
@@ -137,3 +140,23 @@ def handler(event, context):
     except Exception as e:
         print("Error:", e)
         return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
+
+
+def _append_plan_entry(user_id: str, profile: dict, track: dict, plan: dict) -> None:
+    """Append a conversation history entry summarizing the generated plan."""
+    try:
+        task_count = len(plan.get("tasks", []))
+        has_college_chart = plan.get("college_fit_chart") is not None
+        summary = f"Generated application plan for '{track['label']}' with {task_count} tasks"
+        if has_college_chart:
+            summary += f" and {len(plan['college_fit_chart'])} college fit schools"
+
+        entry = {
+            "role": "assistant",
+            "action": "generated_plan",
+            "summary": summary,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        db.append_conversation_history(user_id, entry)
+    except Exception as e:
+        print("Warning: failed to append conversation history:", e)

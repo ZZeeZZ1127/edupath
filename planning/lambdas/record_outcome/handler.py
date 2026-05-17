@@ -1,6 +1,7 @@
 import json
 import os
 import urllib.request
+from datetime import datetime, timezone
 
 from db import client as db
 
@@ -75,11 +76,15 @@ def handler(event, context):
             db.set_current_track(user_id, track_status)
             _trigger_system1(user_id)
             recalibration_triggered = True
+            _append_outcome_entry(user_id, track_status, None, "aborted")
         elif _all_tasks_resolved(track_status):
             track_status["status"] = "completed"
             db.set_current_track(user_id, track_status)
             _trigger_system1(user_id)
             recalibration_triggered = True
+            _append_outcome_entry(user_id, track_status, None, "completed")
+        else:
+            _append_outcome_entry(user_id, track_status, task_id, result)
 
         response_body = {
             "success": True,
@@ -97,3 +102,24 @@ def handler(event, context):
     except Exception as e:
         print("Error:", e)
         return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
+
+
+def _append_outcome_entry(user_id: str, track_status: dict, task_id: str | None, result: str) -> None:
+    """Append a conversation history entry for an outcome or track state change."""
+    try:
+        if result == "completed":
+            summary = f"Track '{track_status['label']}' completed — all tasks resolved"
+        elif result == "aborted":
+            summary = f"Track '{track_status['label']}' aborted by student"
+        else:
+            summary = f"Task outcome recorded: {result}"
+
+        entry = {
+            "role": "assistant",
+            "action": f"track_{result}",
+            "summary": summary,
+            "timestamp": datetime.now(timezone.utc).isoformat()
+        }
+        db.append_conversation_history(user_id, entry)
+    except Exception as e:
+        print("Warning: failed to append conversation history:", e)
