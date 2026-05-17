@@ -39,7 +39,7 @@ export async function generateTrackRecommendations(
       id: `track-research`,
       title: `Launch a ${interest}-focused research project`,
       summary: `Design and start a small independent or mentor-led research project you can complete before senior year.`,
-      matchReason: `${name}, your strengths in ${profile.strengths.slice(0, 2).join(' and ') || 'academics'} pair well with a structured research portfolio for "${profile.goals.slice(0, 80)}…".${growth}`,
+      matchReason: `${name}, your strengths in ${profile.strengths.slice(0, 2).join(' and ') || 'academics'} pair well with a structured research portfolio for "${profile.goals[0]?.slice(0, 80) ?? 'your goals'}".${growth}`,
       timeHorizon: `8–12 weeks`,
       difficulty: `intermediate`,
       category: `research`,
@@ -69,7 +69,7 @@ export async function generateTrackRecommendations(
       id: `track-college-prep`,
       title: `Build your college list & application timeline`,
       summary: `Research fit schools, map deadlines, and create a semester plan tied to your goals.`,
-      matchReason: `Your stated goal — "${profile.goals.slice(0, 60)}${profile.goals.length > 60 ? '…' : ''}" — needs a concrete school and deadline strategy now.`,
+      matchReason: `Your stated goal — "${(profile.goals[0] ?? '').slice(0, 60)}${(profile.goals[0]?.length ?? 0) > 60 ? '…' : ''}" — needs a concrete school and deadline strategy now.`,
       timeHorizon: `2–3 weeks`,
       difficulty: `intermediate`,
       category: `college`,
@@ -257,7 +257,7 @@ function detailForStep(
   const activity = profile.extracurriculars[0] ?? `your main activity`;
 
   return {
-    overview: `Amazon Bedrock generated this guidance for ${name} (${getGradeLabel(profile.grade)}) on the step "${step.title}" within the track "${track.title}". It connects your interests in ${interest}, your goal ("${profile.goals.slice(0, 100)}${profile.goals.length > 100 ? '…' : ''}"), and practical actions you can take this week.`,
+    overview: `Amazon Bedrock generated this guidance for ${name} (${getGradeLabel(profile.grade)}) on the step "${step.title}" within the track "${track.title}". It connects your interests in ${interest}, your goal ("${(profile.goals[0] ?? '').slice(0, 100)}${(profile.goals[0]?.length ?? 0) > 100 ? '…' : ''}"), and practical actions you can take this week.`,
     estimatedTime: `3–5 hours`,
     actionItems: [
       `Block 90 minutes on your calendar this week dedicated only to this step.`,

@@ -89,7 +89,7 @@ export default function HubHomePanel({
               </div>
             </div>
 
-            {(profile.interests.length > 0 || profile.goals) && (
+            {(profile.interests.length > 0 || profile.goals.length > 0) && (
               <div className="p-4 rounded-2xl border border-border bg-card space-y-3">
                 {profile.interests.length > 0 && (
                   <div>
@@ -108,12 +108,14 @@ export default function HubHomePanel({
                     </div>
                   </div>
                 )}
-                {profile.goals && (
+                {profile.goals.length > 0 && (
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-                      Current goal
+                      Goals
                     </p>
-                    <p className="text-sm text-foreground leading-relaxed line-clamp-3">{profile.goals}</p>
+                    <ul className="text-sm text-foreground leading-relaxed list-disc list-inside space-y-0.5">
+                      {profile.goals.slice(0, 3).map((goal, i) => <li key={i} className="line-clamp-1">{goal}</li>)}
+                    </ul>
                   </div>
                 )}
               </div>

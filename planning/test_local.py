@@ -699,7 +699,8 @@ def test_build_plan_prompt_junior():
 def test_bedrock_json_parsing_and_retry():
     """Verify JSON cleaning (markdown fences) and retry-once logic in call_bedrock."""
     call_count = [0]
-    _orig_get = bedrock_mod._get_bedrock
+    import shared.bedrock_utils as shared_bedrock
+    _orig_get = shared_bedrock._get_bedrock
     _orig_cb = bedrock_mod.call_bedrock
 
     class _FakeResponse:
@@ -722,7 +723,7 @@ def test_bedrock_json_parsing_and_retry():
             }
 
     try:
-        bedrock_mod._get_bedrock = lambda: _FakeBedrock()
+        shared_bedrock._get_bedrock = lambda: _FakeBedrock()
         bedrock_mod.call_bedrock = _ORIGINAL_CALL_BEDROCK  # restore so retry calls itself
         result = _ORIGINAL_CALL_BEDROCK("system", "user message")
         assert isinstance(result, dict), f"Expected dict, got {type(result)}: {result}"
@@ -730,7 +731,7 @@ def test_bedrock_json_parsing_and_retry():
         print("  PASS test_bedrock_json_parsing_and_retry")
     finally:
         bedrock_mod.call_bedrock = _orig_cb
-        bedrock_mod._get_bedrock = _orig_get
+        shared_bedrock._get_bedrock = _orig_get
 
 
 def test_all_tasks_resolved():

@@ -15,6 +15,15 @@ function storageKey(userId: string, suffix: string) {
   return `edupath:${suffix}:${userId}`;
 }
 
+async function getJson<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`);
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText);
+    throw new Error(text || `Request failed (${res.status})`);
+  }
+  return res.json() as Promise<T>;
+}
+
 async function postJson<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: `POST`,
@@ -28,9 +37,21 @@ async function postJson<T>(path: string, body: unknown): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+// ── Profile ────────────────────────────────────────────
+
 export async function saveProfile(session: UserSession, profile: StudentProfile): Promise<void> {
   if (API_BASE) {
-    await postJson(`/profile`, { userId: session.userId, email: session.email, profile });
+    // Match create_profile Lambda: flat fields + userId
+    await postJson(`/profile`, {
+      userId: session.userId,
+      name: profile.name,
+      age: profile.age,
+      grade: profile.grade,
+      interests: profile.interests,
+      extracurriculars: profile.extracurriculars,
+      goals: profile.goals,
+      conversationHistory: [],
+    });
     return;
   }
   localStorage.setItem(storageKey(session.userId, `profile`), JSON.stringify(profile));
@@ -40,9 +61,9 @@ export async function saveProfile(session: UserSession, profile: StudentProfile)
 export async function loadProfile(session: UserSession): Promise<StudentProfile | null> {
   if (API_BASE) {
     try {
-      const res = await fetch(`${API_BASE}/profile?userId=${encodeURIComponent(session.userId)}`);
-      if (!res.ok) return null;
-      const data = (await res.json()) as { profile?: StudentProfile };
+      const data = await getJson<{ profile?: StudentProfile }>(
+        `/profile?userId=${encodeURIComponent(session.userId)}`
+      );
       return data.profile ?? null;
     } catch {
       return null;
@@ -52,16 +73,12 @@ export async function loadProfile(session: UserSession): Promise<StudentProfile 
   return raw ? (JSON.parse(raw) as StudentProfile) : null;
 }
 
+// ── Past plans (mock-only — no backend endpoint yet) ───
+
 export async function loadPastPlans(userId: string): Promise<SavedPlan[]> {
   if (API_BASE) {
-    try {
-      const res = await fetch(`${API_BASE}/plans?userId=${encodeURIComponent(userId)}`);
-      if (!res.ok) return [];
-      const data = (await res.json()) as { plans?: SavedPlan[] };
-      return data.plans ?? [];
-    } catch {
-      return [];
-    }
+    // Backend does not yet expose GET /plans; return empty until it's added
+    return [];
   }
   const raw = localStorage.getItem(storageKey(userId, `pastPlans`));
   if (!raw) return [];
@@ -86,7 +103,7 @@ function dedupePastPlans(plans: SavedPlan[]): SavedPlan[] {
 
 export async function savePastPlan(plan: SavedPlan): Promise<void> {
   if (API_BASE) {
-    await postJson(`/plans`, plan);
+    // Backend does not yet expose POST /plans; no-op for now
     return;
   }
   const existing = await loadPastPlans(plan.userId);
@@ -132,15 +149,26 @@ export function buildSavedPlan(
   };
 }
 
+// ── Track recommendations ──────────────────────────────
+
+export async function selectTrack(userId: string, track: TrackRecommendation): Promise<void> {
+  if (API_BASE) {
+    await postJson(`/select-track`, { userId, track });
+    return;
+  }
+  localStorage.setItem(storageKey(userId, `selectedTrack`), JSON.stringify(track));
+}
+
 export async function fetchTrackRecommendations(
   profile: StudentProfile,
-  pastPlans: SavedPlan[] = []
+  pastPlans: SavedPlan[] = [],
+  userId?: string
 ): Promise<TrackRecommendation[]> {
   if (API_BASE) {
     try {
-      const data = await postJson<{ tracks: TrackRecommendation[] }>(`/recommendations`, {
-        profile,
-        pastPlans,
+      // Match recommend Lambda: sends userId, loads profile from DB
+      const data = await postJson<{ tracks: TrackRecommendation[] }>(`/recommend`, {
+        userId: userId ?? profile.name.toLowerCase().replace(/[^a-z0-9]/g, `-`),
       });
       return data.tracks;
     } catch {
@@ -150,25 +178,29 @@ export async function fetchTrackRecommendations(
   return generateTrackRecommendations(profile, pastPlans);
 }
 
+// ── Action guide (plan) ────────────────────────────────
+
 export async function fetchActionGuide(
   profile: StudentProfile,
   track: TrackRecommendation,
-  pastPlans: SavedPlan[] = []
+  pastPlans: SavedPlan[] = [],
+  userId?: string
 ): Promise<ActionGuide> {
   if (API_BASE) {
     try {
-      const data = await postJson<{ guide: ActionGuide }>(`/action-guide`, {
-        profile,
-        track,
-        pastPlans,
-      });
-      return data.guide;
+      // First persist the selected track, then generate the plan
+      const uid = userId ?? profile.name.toLowerCase().replace(/[^a-z0-9]/g, `-`);
+      await selectTrack(uid, track);
+      const data = await postJson<{ plan: ActionGuide }>(`/plan`, { userId: uid });
+      return data.plan;
     } catch {
       /* fall through to mock */
     }
   }
   return generateActionGuide(profile, track, pastPlans);
 }
+
+// ── Step detail ────────────────────────────────────────
 
 export async function fetchStepDetail(
   profile: StudentProfile,
@@ -178,19 +210,17 @@ export async function fetchStepDetail(
 ): Promise<StepDetail> {
   if (API_BASE) {
     try {
-      const data = await postJson<{ detail: StepDetail }>(`/step-detail`, {
-        profile,
-        track,
-        step,
-        guide,
-      });
-      return data.detail;
+      // Backend does not yet expose POST /step-detail
+      // In a full implementation this would call Bedrock for deep-dive guidance
+      throw new Error(`Not implemented`);
     } catch {
       /* fall through to mock */
     }
   }
   return generateStepDetail(profile, track, step, guide);
 }
+
+// ── Local helpers ──────────────────────────────────────
 
 export function persistSelectedTrack(userId: string, track: TrackRecommendation) {
   localStorage.setItem(storageKey(userId, `selectedTrack`), JSON.stringify(track));

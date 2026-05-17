@@ -4,7 +4,7 @@ export interface StudentProfile {
   age: number;
   interests: string[];
   strengths: string[];
-  goals: string;
+  goals: string[];
   extracurriculars: string[];
 }
 

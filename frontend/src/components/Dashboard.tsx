@@ -19,7 +19,7 @@ export default function Dashboard({
     age: 17,
     interests: [`Biology`, `Debate`],
     strengths: [`Research`, `Writing`],
-    goals: `Apply to top universities.`,
+    goals: [`Apply to top universities`],
     extracurriculars: [`Debate Team`],
   },
   onLogout = () => {},

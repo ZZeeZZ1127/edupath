@@ -6,7 +6,7 @@ export const mariaProfile: StudentProfile = {
   age: 17,
   interests: [`Biology`, `Debate`, `Pre-Medicine`, `Environmental Science`],
   strengths: [`Research`, `Public Speaking`, `Writing`, `Critical Thinking`],
-  goals: `Apply to top universities with strong pre-med programs. Pursue research experience and debate competitions before senior year.`,
+  goals: [`Apply to top universities with strong pre-med programs`, `Pursue research experience and debate competitions before senior year`],
   extracurriculars: [`Debate Team (Captain)`, `Science Club`, `Hospital Volunteer`, `School Newspaper`],
 };
 

@@ -69,6 +69,20 @@ def record_outcome(user_id: str, task_id: str, result: str) -> None:
         raise
 
 
+def put_profile(user_id: str, profile: dict) -> None:
+    """Create or replace a student profile. Stores profile fields as top-level attributes."""
+    item = {
+        'userId': user_id,
+        'trackId': PROFILE_TRACK_ID,
+        **profile
+    }
+    try:
+        table.put_item(Item=item)
+    except ClientError as e:
+        print(f"DynamoDB put_profile Error: {e.response['Error']['Message']}")
+        raise
+
+
 def append_conversation_history(user_id: str, entry: dict) -> None:
     """Append an entry to the student's conversationHistory array."""
     try:

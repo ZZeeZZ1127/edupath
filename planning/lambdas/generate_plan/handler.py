@@ -25,7 +25,8 @@ def _build_plan_prompt(profile: dict, track: dict) -> str:
     grade = profile["grade"]
     interests = ", ".join(profile.get("interests", [])) or "none"
     extracurriculars = ", ".join(profile.get("extracurriculars", [])) or "none"
-    goals = ", ".join(profile.get("goals", [])) or "none"
+    goals_raw = profile.get("goals", [])
+    goals = ", ".join(goals_raw) if isinstance(goals_raw, list) else (goals_raw or "none")
 
     lines = [
         "Student profile:",

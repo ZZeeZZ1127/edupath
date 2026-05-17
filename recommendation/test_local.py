@@ -29,8 +29,17 @@ def _mock_get_profile(user_id: str) -> dict | None:
     return None
 
 
+def _mock_put_profile(user_id: str, profile: dict) -> None:
+    _in_memory_db[user_id] = {"__profile": profile}
+
+
 def _mock_set_current_track(user_id: str, track_status: dict) -> None:
-    _in_memory_db[user_id] = track_status
+    entry = _in_memory_db.get(user_id, {})
+    if "__profile" in entry:
+        entry["__profile"]["currentTrackStatus"] = track_status
+    # Merge track_status fields at top level for tests that read _in_memory_db directly
+    entry.update(track_status)
+    _in_memory_db[user_id] = entry
 
 
 _conversation_history_spy: list = []
@@ -193,6 +202,7 @@ import db.client as db_client
 import bedrock_utils as bedrock_mod
 
 db_client.get_profile = _mock_get_profile
+db_client.put_profile = _mock_put_profile
 db_client.set_current_track = _mock_set_current_track
 db_client.append_conversation_history = _mock_append_conversation_history
 

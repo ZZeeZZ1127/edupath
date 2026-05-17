@@ -30,7 +30,7 @@ function parseLines(value: string): string[] {
 function profileCompleteness(profile: StudentProfile): number {
   let score = 0;
   if (profile.name.trim()) score += 15;
-  if (profile.goals.trim()) score += 20;
+  if (profile.goals.length) score += 20;
   if (profile.interests.length) score += 25;
   if (profile.strengths.length) score += 20;
   if (profile.extracurriculars.length) score += 20;
@@ -50,13 +50,13 @@ function EmptyHint({ onEdit }: { onEdit: () => void }) {
 
 export default function ProfilePanel({ profile, onUpdateProfile = () => {} }: ProfilePanelProps) {
   const [editing, setEditing] = useState<EditSection>(null);
-  const [editGoals, setEditGoals] = useState(profile.goals);
+  const [editGoals, setEditGoals] = useState(profile.goals.join('\n'));
   const [editInterests, setEditInterests] = useState(profile.interests);
   const [editStrengths, setEditStrengths] = useState(profile.strengths.join(', '));
   const [editActivities, setEditActivities] = useState(profile.extracurriculars.join('\n'));
 
   useEffect(() => {
-    setEditGoals(profile.goals);
+    setEditGoals(profile.goals.join('\n'));
     setEditInterests(profile.interests);
     setEditStrengths(profile.strengths.join(', '));
     setEditActivities(profile.extracurriculars.join('\n'));
@@ -68,7 +68,7 @@ export default function ProfilePanel({ profile, onUpdateProfile = () => {} }: Pr
   const saveSection = (section: EditSection) => {
     if (!section) return;
     const updated: StudentProfile = { ...profile };
-    if (section === 'goals') updated.goals = editGoals.trim();
+    if (section === 'goals') updated.goals = parseLines(editGoals);
     if (section === 'interests') updated.interests = editInterests;
     if (section === 'strengths') updated.strengths = parseLines(editStrengths);
     if (section === 'extracurriculars') updated.extracurriculars = parseLines(editActivities);
@@ -134,8 +134,10 @@ export default function ProfilePanel({ profile, onUpdateProfile = () => {} }: Pr
           {sectionHeader('Goals & Milestones', 'goals', TargetIcon)}
           {editing === 'goals' ? (
             <textarea value={editGoals} onChange={(e) => setEditGoals(e.target.value)} rows={4} className="w-full px-4 py-3 rounded-xl border border-border bg-muted text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none" />
-          ) : profile.goals.trim() ? (
-            <p className="text-sm text-muted-foreground leading-relaxed">{profile.goals}</p>
+          ) : profile.goals.length ? (
+            <ul className="text-sm text-muted-foreground leading-relaxed space-y-1 list-disc list-inside">
+              {profile.goals.map((goal, i) => <li key={i}>{goal}</li>)}
+            </ul>
           ) : (
             <EmptyHint onEdit={() => setEditing('goals')} />
           )}

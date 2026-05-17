@@ -20,12 +20,12 @@ def handler(event, context):
             "grade": body.get("grade"),
             "interests": body.get("interests", []),
             "extracurriculars": body.get("extracurriculars", []),
-            "goals": body.get("goals", []),
+            "goals": body.get("goals", []) if isinstance(body.get("goals"), list) else [body.get("goals", "")] if body.get("goals") else [],
             "conversationHistory": body.get("conversationHistory", []),
             "currentTrackStatus": None
         }
 
-        db.set_current_track(user_id, {"__profile": profile})
+        db.put_profile(user_id, profile)
 
         return {
             "statusCode": 200,

@@ -42,7 +42,7 @@ export default function ProfileSidebar({
     age: 17,
     interests: [`Biology`, `Debate`],
     strengths: [`Research`, `Writing`],
-    goals: `Apply to college`,
+    goals: [`Apply to college`],
     extracurriculars: [`Science Club`],
   },
   activeTab = `recommendations`,

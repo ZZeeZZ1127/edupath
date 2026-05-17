@@ -67,7 +67,7 @@ export default function OnboardingPage({
       age: parsedAge,
       interests: selectedInterests,
       strengths: strengths.split(`,`).map((s) => s.trim()).filter(Boolean),
-      goals,
+      goals: goals.split('\n').map((s) => s.trim()).filter(Boolean),
       extracurriculars: extracurriculars.split(`,`).map((s) => s.trim()).filter(Boolean),
     };
     setSaving(true);

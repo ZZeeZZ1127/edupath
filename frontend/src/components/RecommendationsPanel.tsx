@@ -95,7 +95,7 @@ function ChatBubble({ message }: { message: ChatMessage }) {
 }
 
 export default function RecommendationsPanel({
-  profile = { name: `Maria`, grade: 11, age: 17, interests: [`Biology`, `Debate`], strengths: [], goals: ``, extracurriculars: [] },
+  profile = { name: `Maria`, grade: 11, age: 17, interests: [`Biology`, `Debate`], strengths: [], goals: [], extracurriculars: [] },
   onBuildPlan = () => {},
 }: RecommendationsPanelProps) {
   const [subTab, setSubTab] = useState<SubTab>(`chat`);

@@ -95,7 +95,7 @@ def _build_user_message(profile: dict, recalibration_block: str) -> str:
         f"- Grade: {profile.get('grade', 'Unknown')}\n"
         f"- Interests: {', '.join(profile.get('interests', [])) or 'none'}\n"
         f"- Extracurriculars: {', '.join(profile.get('extracurriculars', [])) or 'none'}\n"
-        f"- Goals: {', '.join(profile.get('goals', [])) or 'none'}\n"
+        f"- Goals: {', '.join(profile.get('goals', [])) if isinstance(profile.get('goals'), list) else (profile.get('goals') or 'none')}\n"
         f"- Past conversation: {profile.get('conversationHistory') or 'none'}\n"
         f"{recalibration_block}\n"
         f"Return a JSON array of 3 tracks. Each track:\n"

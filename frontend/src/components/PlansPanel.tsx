@@ -97,7 +97,7 @@ function ActionCard({ item, onToggle }: { item: ActionItem; onToggle: (id: strin
 }
 
 export default function PlansPanel({
-  profile = { name: `Maria`, grade: 11, age: 17, interests: [`Biology`, `Debate`], strengths: [], goals: ``, extracurriculars: [] },
+  profile = { name: `Maria`, grade: 11, age: 17, interests: [`Biology`, `Debate`], strengths: [], goals: [], extracurriculars: [] },
   initialPlan = null,
 }: PlansPanelProps) {
   const [plan, setPlan] = useState<ApplicationPlan>(initialPlan ?? mockApplicationPlan);

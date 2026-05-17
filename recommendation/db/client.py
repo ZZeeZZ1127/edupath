@@ -7,7 +7,7 @@ from botocore.exceptions import ClientError
 dynamodb = boto3.resource('dynamodb', region_name=os.getenv('AWS_REGION', 'us-east-1'))
 table = dynamodb.Table('studentProfiles')
 
-# Since the table schema requires a trackId (Sort Key), we use a constant 
+# Since the table schema requires a trackId (Sort Key), we use a constant
 # for the main profile record so we can look it up with just the user_id.
 PROFILE_TRACK_ID = 'PROFILE'
 
@@ -50,9 +50,8 @@ def record_outcome(user_id: str, task_id: str, result: str) -> None:
         'taskId': task_id,
         'result': result
     }
-    
+
     try:
-        # We use list_append to add to the array, and if_not_exists in case the array is empty/missing
         table.update_item(
             Key={
                 'userId': user_id,
@@ -66,6 +65,20 @@ def record_outcome(user_id: str, task_id: str, result: str) -> None:
         )
     except ClientError as e:
         print(f"DynamoDB record_outcome Error: {e.response['Error']['Message']}")
+        raise
+
+
+def put_profile(user_id: str, profile: dict) -> None:
+    """Create or replace a student profile. Stores profile fields as top-level attributes."""
+    item = {
+        'userId': user_id,
+        'trackId': PROFILE_TRACK_ID,
+        **profile
+    }
+    try:
+        table.put_item(Item=item)
+    except ClientError as e:
+        print(f"DynamoDB put_profile Error: {e.response['Error']['Message']}")
         raise
 
 
