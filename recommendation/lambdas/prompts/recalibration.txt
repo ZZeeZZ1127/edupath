@@ -1,0 +1,9 @@
+Previous track performance:
+- Track: {{previousTrackLabel}} (difficulty: {{previousTrackDifficulty}})
+- Completion rate: {{completionRate}}% of tasks completed
+- Outcomes: {{outcomes}}
+
+Adjust difficulty of new tracks:
+- Completion > 80% AND mostly accepted → increase target difficulty ~15 points
+- Completion < 50% OR mostly rejected → decrease target difficulty ~15 points
+- Otherwise → hold similar difficulty

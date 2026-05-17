@@ -1,0 +1,16 @@
+Additionally, generate a college_fit_chart as part of the plan object. Include 6-8 schools that match the student's interests, goals, and grade level. For each school:
+
+{
+  "school": "School Name",
+  "fit_type": "reach | match | safety",
+  "why_it_fits": "2 sentences referencing the student's specific interests and goals",
+  "requirements": {
+    "gpa": "3.5+",
+    "test_scores": "SAT 1400+ or ACT 32+",
+    "notable_requirements": ["Supplemental essay on research experience", "Interview required"]
+  },
+  "application_deadline": "YYYY-MM-DD or null",
+  "financial_aid_deadline": "YYYY-MM-DD or null"
+}
+
+Select a mix of reach, match, and safety schools. Every entry must reference something specific in the student's profile — if it could apply to any student, it fails the quality bar.
