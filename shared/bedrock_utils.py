@@ -28,7 +28,7 @@ def call_bedrock(system_prompt: str, user_message: str, retry: bool = True) -> l
     })
 
     response = _get_bedrock().invoke_model(
-        modelId="anthropic.claude-sonnet-4-5",
+        modelId="anthropic.claude-sonnet-4-5-20250929-v1:0",
         body=body,
         contentType="application/json",
         accept="application/json"
