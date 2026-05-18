@@ -147,8 +147,10 @@ export default function HubHomePanel({
                   className="w-full text-left p-5 rounded-2xl border border-border bg-card hover:border-primary/40 transition-all group"
                 >
                   <p className="text-xs text-muted-foreground mb-1">Latest plan</p>
-                  <h3 className="font-semibold text-foreground group-hover:text-primary">{latest.track.title}</h3>
-                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{latest.guide.overview}</p>
+                  <h3 className="font-semibold text-foreground group-hover:text-primary">{latest.track.label}</h3>
+                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                    {latest.guide.tasks[0]?.match_reasoning ?? `${latest.guide.tasks.length} tasks`}
+                  </p>
                   <span className="inline-flex items-center gap-1 text-xs font-medium text-primary mt-3">
                     Open full plan
                     <ArrowRightIcon className="w-3 h-3" />

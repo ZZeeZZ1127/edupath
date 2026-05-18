@@ -8,3 +8,10 @@ venv/
 *.egg-info/
 dist/
 build/
+
+# Environment
+frontend/.env
+frontend/.env.local
+
+# Serverless Framework
+.serverless/

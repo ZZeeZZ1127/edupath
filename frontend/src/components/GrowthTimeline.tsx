@@ -4,7 +4,7 @@ import {
   MapPinIcon,
   SparklesIcon,
 } from 'lucide-react';
-import type { SavedPlan, StudentProfile, TrackRecommendation } from '../types';
+import type { SavedPlan, StudentProfile } from '../types';
 import { getGradeShortLabel } from '../lib/grades';
 import { overallPlanProgress } from '../lib/planProgress';
 
@@ -14,7 +14,7 @@ interface GrowthTimelineProps {
   onOpenPlan: (plan: SavedPlan) => void;
 }
 
-const CATEGORY_DOT: Record<TrackRecommendation['category'], string> = {
+const CATEGORY_DOT: Record<string, string> = {
   research: `bg-emerald`,
   internship: `bg-primary`,
   college: `bg-amber`,
@@ -22,6 +22,13 @@ const CATEGORY_DOT: Record<TrackRecommendation['category'], string> = {
   extracurricular: `bg-violet-500`,
   'skill-building': `bg-sky-500`,
 };
+
+function dominantCategory(plan: SavedPlan): string {
+  const cats = plan.track.tasks.map((t) => t.category);
+  const freq: Record<string, number> = {};
+  for (const c of cats) freq[c] = (freq[c] ?? 0) + 1;
+  return Object.entries(freq).sort((a, b) => b[1] - a[1])[0]?.[0] ?? `extracurricular`;
+}
 
 function formatTimelineDate(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, {
@@ -95,7 +102,8 @@ export default function GrowthTimeline({ profile, plans, onOpenPlan }: GrowthTim
 
             {chronological.map((plan, index) => {
               const { percent } = overallPlanProgress(plan);
-              const dot = CATEGORY_DOT[plan.track.category] ?? `bg-primary`;
+              const cat = dominantCategory(plan);
+              const dot = CATEGORY_DOT[cat] ?? `bg-primary`;
               const isLatest = index === chronological.length - 1;
 
               return (
@@ -115,7 +123,7 @@ export default function GrowthTimeline({ profile, plans, onOpenPlan }: GrowthTim
                     <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground mb-1.5">
                       <time dateTime={plan.createdAt}>{formatTimelineDate(plan.createdAt)}</time>
                       <span className="text-border">·</span>
-                      <span className="capitalize">{plan.track.category.replace(`-`, ` `)}</span>
+                      <span className="capitalize">{cat.replace(`-`, ` `)}</span>
                       {isLatest && (
                         <>
                           <span className="text-border">·</span>
@@ -124,9 +132,11 @@ export default function GrowthTimeline({ profile, plans, onOpenPlan }: GrowthTim
                       )}
                     </div>
                     <h3 className="text-sm font-semibold text-foreground group-hover:text-primary leading-snug pr-2">
-                      {plan.track.title}
+                      {plan.track.label}
                     </h3>
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{plan.guide.overview}</p>
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                      {plan.guide.tasks[0]?.match_reasoning ?? `${plan.guide.tasks.length} tasks`}
+                    </p>
                     <div className="mt-3 flex items-center gap-3">
                       <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
                         <div

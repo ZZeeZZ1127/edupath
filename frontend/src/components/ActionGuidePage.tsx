@@ -2,12 +2,15 @@ import { useEffect, useRef, useState } from 'react';
 import {
   BookOpenIcon,
   CheckCircle2Icon,
-  ExternalLinkIcon,
-  GlobeIcon,
+  CircleIcon,
   HomeIcon,
   Loader2Icon,
   LogOutIcon,
   SparklesIcon,
+  FileTextIcon,
+  CalendarIcon,
+  BuildingIcon,
+  TargetIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ActionGuide, SavedPlan, StudentProfile, TrackRecommendation } from '../types';
@@ -28,6 +31,12 @@ interface ActionGuidePageProps {
   onLogout?: () => void;
   onStartOver?: () => void;
 }
+
+const FIT_COLORS: Record<string, string> = {
+  reach: `bg-rose-muted text-rose border-rose/20`,
+  match: `bg-amber-muted text-amber border-amber/20`,
+  safety: `bg-emerald-muted text-emerald border-emerald/20`,
+};
 
 export default function ActionGuidePage({
   profile,
@@ -51,7 +60,7 @@ export default function ActionGuidePage({
   onGuideReadyRef.current = onGuideReady;
   pastPlansRef.current = pastPlans;
 
-  const requestKey = `${track.id}:${viewingSaved ? `saved` : `new`}`;
+  const requestKey = `${track.track_id}:${viewingSaved ? `saved` : `new`}`;
 
   useEffect(() => {
     savedKeyRef.current = null;
@@ -131,118 +140,116 @@ export default function ActionGuidePage({
             <div className="flex flex-col items-center justify-center py-24 gap-4">
               <Loader2Icon className="w-10 h-10 text-primary animate-spin" />
               <p className="text-sm text-muted-foreground text-center max-w-sm">
-                Researching the web and building your step-by-step guide for{' '}
-                <strong>{track.title}</strong>…
+                Building your step-by-step guide for{' '}
+                <strong>{track.label}</strong>…
               </p>
             </div>
           ) : guide ? (
             <div className="fade-in space-y-8">
               <div className="p-6 rounded-2xl bg-brand text-brand-foreground shadow-custom">
                 <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider opacity-70 mb-2">
-                  <GlobeIcon className="w-4 h-4" />
-                  Web-sourced action plan
+                  <TargetIcon className="w-4 h-4" />
+                  Action plan
                 </div>
-                <h1 className="text-2xl font-bold mb-2">{guide.trackTitle}</h1>
-                <p className="text-sm opacity-90 leading-relaxed">{guide.overview}</p>
-                <p className="text-xs opacity-70 mt-3">Estimated: {guide.estimatedDuration}</p>
+                <h1 className="text-2xl font-bold mb-2">{guide.label}</h1>
+                <p className="text-sm opacity-90 leading-relaxed">{track.description}</p>
+                <p className="text-xs opacity-70 mt-3">
+                  {guide.tasks.length} tasks · {guide.tasks.reduce((s, t) => s + t.action_items.length, 0)} action items
+                </p>
               </div>
 
-              {guide.prerequisites.length > 0 && (
-                <section>
-                  <h2 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-                    <CheckCircle2Icon className="w-4 h-4 text-emerald" />
-                    Before you start
-                  </h2>
-                  <ul className="flex flex-col gap-2">
-                    {guide.prerequisites.map((item) => (
-                      <li
-                        key={item}
-                        className="text-sm text-muted-foreground px-4 py-2.5 rounded-xl bg-muted border border-border"
-                      >
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              )}
-
+              {/* Tasks */}
               <section>
                 <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
                   <BookOpenIcon className="w-4 h-4 text-primary" />
-                  Step-by-step instructions
+                  Tasks & action items
                 </h2>
                 <div className="flex flex-col gap-4">
-                  {guide.steps
-                    .sort((a, b) => a.order - b.order)
-                    .map((step) => (
-                      <div
-                        key={step.id}
-                        className="p-5 rounded-2xl border border-border bg-card shadow-custom"
-                      >
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className="w-7 h-7 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
-                            {step.order}
-                          </span>
-                          <h3 className="font-semibold text-foreground">{step.title}</h3>
-                        </div>
-                        <p className="text-sm text-muted-foreground leading-relaxed ml-10">
-                          {step.description}
-                        </p>
-                        {step.tips && step.tips.length > 0 && (
-                          <ul className="mt-3 ml-10 flex flex-col gap-1.5">
-                            {step.tips.map((tip) => (
-                              <li key={tip} className="text-xs text-accent-foreground flex gap-2">
-                                <SparklesIcon className="w-3.5 h-3.5 shrink-0 mt-0.5 text-primary" />
-                                {tip}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-                    ))}
-                </div>
-              </section>
-
-              <section>
-                <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
-                  <GlobeIcon className="w-4 h-4 text-primary" />
-                  Resources from the internet
-                </h2>
-                <div className="flex flex-col gap-3">
-                  {guide.resources.map((res) => (
-                    <a
-                      key={res.url}
-                      href={res.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-start gap-3 p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-all group"
-                    >
-                      <ExternalLinkIcon className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                      <div className="min-w-0">
-                        <div className="text-sm font-semibold text-foreground group-hover:text-primary">
-                          {res.title}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{res.description}</p>
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              </section>
-
-              <section>
-                <h2 className="text-sm font-semibold text-foreground mb-3">Weekly milestones</h2>
-                <div className="flex flex-col gap-2">
-                  {guide.weeklyMilestones.map((milestone, i) => (
+                  {guide.tasks.map((task, i) => (
                     <div
-                      key={milestone}
-                      className="flex items-center gap-3 text-sm px-4 py-3 rounded-xl bg-accent/50 border border-accent-foreground/10"
+                      key={task.task_id}
+                      className="p-5 rounded-2xl border border-border bg-card shadow-custom"
                     >
-                      <span className="text-xs font-bold text-primary w-6">W{i + 1}</span>
-                      <span className="text-foreground">{milestone}</span>
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="w-7 h-7 rounded-full bg-primary text-primary-foreground text-xs font-bold flex items-center justify-center">
+                          {i + 1}
+                        </span>
+                        <h3 className="font-semibold text-foreground">{task.label}</h3>
+                      </div>
+                      <p className="text-sm text-muted-foreground leading-relaxed ml-10 mb-3">
+                        {task.match_reasoning}
+                      </p>
+
+                      {/* Materials */}
+                      {task.materials_needed.length > 0 && (
+                        <div className="ml-10 mb-3">
+                          <div className="text-xs font-semibold text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                            <FileTextIcon className="w-3.5 h-3.5" /> Materials needed
+                          </div>
+                          <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+                            {task.materials_needed.map((m, j) => <li key={j}>{m}</li>)}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Action items */}
+                      <div className="ml-10">
+                        <div className="text-xs font-semibold text-muted-foreground mb-1.5">Action items</div>
+                        <ul className="space-y-1.5">
+                          {task.action_items.map((action, j) => (
+                            <li key={j} className="flex items-start gap-2 text-xs text-foreground">
+                              <CircleIcon className="w-3.5 h-3.5 text-muted-foreground mt-0.5 shrink-0" />
+                              <span className="leading-relaxed">{action}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Deadline */}
+                      {task.deadlines.application && (
+                        <div className="ml-10 mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <CalendarIcon className="w-3.5 h-3.5" />
+                          <span>Deadline: {task.deadlines.application}</span>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
               </section>
+
+              {/* College fit chart */}
+              {guide.college_fit_chart && guide.college_fit_chart.length > 0 && (
+                <section>
+                  <h2 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
+                    <BuildingIcon className="w-4 h-4 text-primary" />
+                    College fit chart
+                  </h2>
+                  <div className="flex flex-col gap-3">
+                    {guide.college_fit_chart.map((school) => {
+                      const fitStyle = FIT_COLORS[school.fit_type] ?? FIT_COLORS.match;
+                      return (
+                        <div
+                          key={school.school}
+                          className="p-4 rounded-xl border border-border bg-card"
+                        >
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="font-semibold text-foreground text-sm">{school.school}</h3>
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border capitalize ${fitStyle}`}>
+                              {school.fit_type}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mb-2">{school.why_it_fits}</p>
+                          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                            <span>GPA: {school.requirements.gpa}</span>
+                            <span>Tests: {school.requirements.test_scores}</span>
+                            {school.application_deadline && <span>Apply by: {school.application_deadline}</span>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
 
               <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-border">
                 <button

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   SparklesIcon,
   SendIcon,
@@ -10,32 +10,37 @@ import {
   ArrowRightIcon,
   BuildingIcon,
   ClockIcon,
-  TagIcon,
-  CalendarIcon,
   ChevronDownIcon,
+  ChevronUpIcon,
+  CircleIcon,
+  TargetIcon,
 } from 'lucide-react';
-import type { Recommendation, ChatMessage, StudentProfile, CollegeFitItem } from '../types';
-import { mockRecommendations, mockCollegeFit, mockChatHistory } from '../data/mockData';
+import type { ChatMessage, StudentProfile, TrackRecommendation, CollegeFitSchool, TrackTask } from '../types';
+import { mockChatHistory } from '../data/mockData';
+import { generateTrackRecommendations, buildCollegeFitChart } from '../services/mockAi';
 import { getGradeShortLabel } from '../lib/grades';
 
 interface RecommendationsPanelProps {
   profile?: StudentProfile;
-  onBuildPlan?: (rec: Recommendation | CollegeFitItem) => void;
+  onBuildPlan?: (track: TrackRecommendation) => void;
 }
 
-const CATEGORY_CONFIG = {
-  research: { icon: FlaskConicalIcon, label: `Research Program`, color: `bg-emerald-muted text-emerald border-emerald/20` },
+const CATEGORY_CONFIG: Record<string, { icon: typeof FlaskConicalIcon; label: string; color: string }> = {
+  research: { icon: FlaskConicalIcon, label: `Research`, color: `bg-emerald-muted text-emerald border-emerald/20` },
   internship: { icon: BriefcaseIcon, label: `Internship`, color: `bg-amber-muted text-amber border-amber/20` },
   college: { icon: SchoolIcon, label: `College`, color: `bg-accent text-accent-foreground border-accent-foreground/20` },
   competition: { icon: TrophyIcon, label: `Competition`, color: `bg-rose-muted text-rose border-rose/20` },
   extracurricular: { icon: UsersIcon, label: `Extracurricular`, color: `bg-secondary text-secondary-foreground border-border` },
 };
 
-const FIT_CONFIG = {
+const FIT_CONFIG: Record<string, { color: string; label: string }> = {
   reach: { color: `bg-rose-muted text-rose border-rose/20`, label: `Reach` },
   match: { color: `bg-amber-muted text-amber border-amber/20`, label: `Match` },
   safety: { color: `bg-emerald-muted text-emerald border-emerald/20`, label: `Safety` },
 };
+
+const DIFFICULTY_COLOR = (d: number) =>
+  d >= 60 ? `text-rose` : d >= 35 ? `text-amber` : `text-emerald`;
 
 type SubTab = 'chat' | 'opportunities' | 'colleges';
 
@@ -63,9 +68,7 @@ function ChatBubble({ message }: { message: ChatMessage }) {
     const lines = text.split(`\n`);
     return lines.map((line, i) => {
       const boldReplaced = line.replace(/\*\*(.+?)\*\*/g, `<strong>$1</strong>`);
-      return (
-        <p key={i} className={i > 0 ? `mt-2` : ``} dangerouslySetInnerHTML={{ __html: boldReplaced }} />
-      );
+      return <p key={i} className={i > 0 ? `mt-2` : ``} dangerouslySetInnerHTML={{ __html: boldReplaced }} />;
     });
   };
 
@@ -78,7 +81,7 @@ function ChatBubble({ message }: { message: ChatMessage }) {
       )}
       {isUser && (
         <div className="w-8 h-8 rounded-full bg-brand flex items-center justify-center shrink-0 mb-0.5 text-white text-xs font-bold">
-          M
+          {message.content.charAt(0)}
         </div>
       )}
       <div
@@ -94,6 +97,131 @@ function ChatBubble({ message }: { message: ChatMessage }) {
   );
 }
 
+function TrackCard({ track, onBuildPlan }: { track: TrackRecommendation; onBuildPlan: (track: TrackRecommendation) => void }) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <div className="bg-card rounded-2xl border border-border shadow-custom overflow-hidden fade-in">
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
+              <TargetIcon className="w-5 h-5 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-semibold text-foreground text-sm leading-tight">{track.label}</h3>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className={`text-xs font-semibold ${DIFFICULTY_COLOR(track.difficulty)}`}>
+                  Difficulty: {track.difficulty}%
+                </span>
+                <span className="text-xs text-muted-foreground">{track.tasks.length} tasks</span>
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => onBuildPlan(track)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-all shrink-0"
+          >
+            Build a Plan
+            <ArrowRightIcon className="w-3 h-3" />
+          </button>
+        </div>
+
+        <p className="text-sm text-muted-foreground leading-relaxed mb-3">{track.description}</p>
+
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-all"
+        >
+          {track.tasks.length} tasks
+          {expanded ? <ChevronUpIcon className="w-3.5 h-3.5" /> : <ChevronDownIcon className="w-3.5 h-3.5" />}
+        </button>
+
+        {expanded && (
+          <div className="mt-3 space-y-2">
+            {track.tasks.map((task) => {
+              const cat = CATEGORY_CONFIG[task.category] ?? CATEGORY_CONFIG.extracurricular;
+              const CatIcon = cat.icon;
+              return (
+                <div key={task.task_id} className="flex items-start gap-3 p-3 rounded-xl bg-muted/50 border border-border">
+                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${cat.color} border`}>
+                    <CatIcon className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium text-foreground">{task.label}</span>
+                      <span className={`text-xs ${DIFFICULTY_COLOR(task.difficulty)}`}>{task.difficulty}%</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{task.description}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CollegeFitCard({ school }: { school: CollegeFitSchool }) {
+  const fitConfig = FIT_CONFIG[school.fit_type] ?? FIT_CONFIG.match;
+  return (
+    <div className="bg-card rounded-2xl border border-border shadow-custom overflow-hidden fade-in">
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="font-bold text-foreground">{school.school}</h3>
+              <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${fitConfig.color}`}>
+                {fitConfig.label}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-3 rounded-xl bg-accent border border-accent-foreground/10 mb-3">
+          <div className="flex items-start gap-2">
+            <SparklesIcon className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
+            <p className="text-xs text-accent-foreground leading-relaxed">{school.why_it_fits}</p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-4 mb-3">
+          <div>
+            <div className="text-xs text-muted-foreground">GPA</div>
+            <div className="text-sm font-semibold text-foreground">{school.requirements.gpa}</div>
+          </div>
+          <div>
+            <div className="text-xs text-muted-foreground">Test Scores</div>
+            <div className="text-sm font-semibold text-foreground">{school.requirements.test_scores}</div>
+          </div>
+          {school.application_deadline && (
+            <div>
+              <div className="text-xs text-muted-foreground">Deadline</div>
+              <div className="text-sm font-semibold text-foreground">{school.application_deadline}</div>
+            </div>
+          )}
+        </div>
+
+        {school.requirements.notable_requirements.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {school.requirements.notable_requirements.map((req) => (
+              <span key={req} className="text-xs px-2.5 py-1 rounded-full bg-secondary text-secondary-foreground border border-border">
+                {req}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {school.financial_aid_deadline && (
+          <p className="text-xs text-muted-foreground">Financial aid deadline: {school.financial_aid_deadline}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function RecommendationsPanel({
   profile = { name: `Maria`, grade: 11, age: 17, interests: [`Biology`, `Debate`], strengths: [], goals: [], extracurriculars: [] },
   onBuildPlan = () => {},
@@ -102,7 +230,33 @@ export default function RecommendationsPanel({
   const [messages, setMessages] = useState<ChatMessage[]>(mockChatHistory);
   const [inputValue, setInputValue] = useState(``);
   const [isTyping, setIsTyping] = useState(false);
-  const [expandedRec, setExpandedRec] = useState<string | null>(null);
+  const [tracks, setTracks] = useState<TrackRecommendation[]>([]);
+  const [collegeFit, setCollegeFit] = useState<CollegeFitSchool[] | null>(null);
+  const [isLoadingTracks, setIsLoadingTracks] = useState(false);
+
+  const loadTracks = useCallback(async () => {
+    setIsLoadingTracks(true);
+    const data = await generateTrackRecommendations(profile);
+    setTracks(data);
+    setIsLoadingTracks(false);
+  }, [profile]);
+
+  const loadCollegeFit = useCallback(() => {
+    const data = buildCollegeFitChart(profile);
+    setCollegeFit(data);
+  }, [profile]);
+
+  useEffect(() => {
+    if (subTab === `opportunities` && tracks.length === 0) {
+      loadTracks();
+    }
+  }, [subTab, tracks.length, loadTracks]);
+
+  useEffect(() => {
+    if (subTab === `colleges` && collegeFit === null) {
+      loadCollegeFit();
+    }
+  }, [subTab, collegeFit, loadCollegeFit]);
 
   const aiResponses = [
     `Based on your interest in biology and your role as debate team captain, I have a few strong suggestions for this semester.\n\n**Top priority:** Apply to the NIH Summer Internship Program before March 2026. Your biology background and research interest make you a competitive applicant, and NIH experience is a standout credential for pre-med applicants.\n\n**For debate:** Push for a nationals qualification this season. As captain, a nationals bid becomes the headline of your leadership story on applications.\n\nWant me to build a full application plan for any of these opportunities?`,
@@ -217,164 +371,45 @@ export default function RecommendationsPanel({
 
       {/* Opportunities tab */}
       <div className={`flex-1 overflow-y-auto px-6 py-4 scrollbar-thin ${subTab === `opportunities` ? `` : `hidden`}`}>
-        <div className="flex flex-col gap-4">
-          {mockRecommendations.map((rec) => {
-            const config = CATEGORY_CONFIG[rec.category];
-            const Icon = config.icon;
-            const isExpanded = expandedRec === rec.id;
-            return (
-              <div key={rec.id} className="bg-card rounded-2xl border border-border shadow-custom overflow-hidden fade-in">
-                <div className="p-5">
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0">
-                        <Icon className="w-5 h-5 text-primary" />
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="font-semibold text-foreground text-sm leading-tight">{rec.title}</h3>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <BuildingIcon className="w-3 h-3 text-muted-foreground shrink-0" />
-                          <span className="text-xs text-muted-foreground truncate">{rec.organization}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full border shrink-0 ${config.color}`}>
-                      {config.label}
-                    </span>
-                  </div>
-
-                  <p className="text-sm text-muted-foreground leading-relaxed mb-3">{rec.description}</p>
-
-                  {/* Match reason */}
-                  <div className="p-3 rounded-xl bg-accent border border-accent-foreground/10 mb-3">
-                    <div className="flex items-start gap-2">
-                      <SparklesIcon className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
-                      <p className="text-xs text-accent-foreground leading-relaxed">{rec.matchReason}</p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      {rec.deadline && (
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <CalendarIcon className="w-3.5 h-3.5" />
-                          <span>{rec.deadline}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <ClockIcon className="w-3.5 h-3.5" />
-                        <span>{rec.gradeRange}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setExpandedRec(isExpanded ? null : rec.id)}
-                        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-all"
-                      >
-                        Tags
-                        <ChevronDownIcon className={`w-3.5 h-3.5 transition-transform ${isExpanded ? `rotate-180` : ``}`} />
-                      </button>
-                      <button
-                        onClick={() => onBuildPlan(rec)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-all"
-                      >
-                        Build a Plan
-                        <ArrowRightIcon className="w-3 h-3" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Tags expanded */}
-                  <div className={`mt-3 flex flex-wrap gap-1.5 ${isExpanded ? `` : `hidden`}`}>
-                    {rec.tags.map((tag) => (
-                      <span key={tag} className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border">
-                        <TagIcon className="w-3 h-3" />
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        {isLoadingTracks ? (
+          <div className="flex flex-col items-center justify-center h-full">
+            <SparklesIcon className="w-10 h-10 text-primary animate-pulse mb-3" />
+            <p className="text-sm text-muted-foreground">Generating recommendations for {profile.name}...</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {tracks.map((track) => (
+              <TrackCard key={track.track_id} track={track} onBuildPlan={onBuildPlan} />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* College Fit tab */}
       <div className={`flex-1 overflow-y-auto px-6 py-4 scrollbar-thin ${subTab === `colleges` ? `` : `hidden`}`}>
-        <div className="mb-4 p-4 rounded-xl bg-accent border border-accent-foreground/10">
-          <div className="flex items-start gap-3">
-            <SparklesIcon className="w-4 h-4 text-primary mt-0.5 shrink-0" />
-            <p className="text-sm text-foreground">
-              <strong>Fit chart for {profile.name}</strong> — 6 colleges matched to your biology interest, pre-med goals, and first-gen background. Includes reach, match, and safety options.
-            </p>
+        {collegeFit === null ? (
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <BuildingIcon className="w-10 h-10 text-muted-foreground mb-3" />
+            <p className="text-sm text-muted-foreground">College fit chart is available starting in Grade 11.</p>
+            <p className="text-xs text-muted-foreground mt-1">Generate a plan to see personalized college matches.</p>
           </div>
-        </div>
-        <div className="flex flex-col gap-4">
-          {mockCollegeFit.map((college) => {
-            const fitConfig = FIT_CONFIG[college.type];
-            return (
-              <div key={college.id} className="bg-card rounded-2xl border border-border shadow-custom overflow-hidden fade-in">
-                <div className="p-5">
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-foreground">{college.name}</h3>
-                        <span className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${fitConfig.color}`}>
-                          {fitConfig.label}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">{college.location}</p>
-                    </div>
-                    <button
-                      onClick={() => onBuildPlan(college)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-semibold hover:opacity-90 transition-all shrink-0"
-                    >
-                      Build Plan
-                      <ArrowRightIcon className="w-3 h-3" />
-                    </button>
-                  </div>
-
-                  {/* Match reason */}
-                  <div className="p-3 rounded-xl bg-accent border border-accent-foreground/10 mb-3">
-                    <div className="flex items-start gap-2">
-                      <SparklesIcon className="w-3.5 h-3.5 text-primary mt-0.5 shrink-0" />
-                      <p className="text-xs text-accent-foreground leading-relaxed">{college.matchReason}</p>
-                    </div>
-                  </div>
-
-                  {/* Stats row */}
-                  <div className="flex flex-wrap gap-4 mb-3">
-                    <div>
-                      <div className="text-xs text-muted-foreground">Acceptance Rate</div>
-                      <div className="text-sm font-semibold text-foreground">{college.acceptanceRate}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">SAT Range</div>
-                      <div className="text-sm font-semibold text-foreground">{college.satRange}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground">Deadline</div>
-                      <div className="text-sm font-semibold text-foreground">{college.deadline}</div>
-                    </div>
-                  </div>
-
-                  {/* Programs */}
-                  <div className="flex flex-wrap gap-1.5 mb-3">
-                    {college.programs.map((prog) => (
-                      <span key={prog} className="text-xs px-2.5 py-1 rounded-full bg-secondary text-secondary-foreground border border-border">
-                        {prog}
-                      </span>
-                    ))}
-                  </div>
-
-                  {/* Notes */}
-                  <p className="text-xs text-muted-foreground leading-relaxed">{college.notes}</p>
-                </div>
+        ) : (
+          <>
+            <div className="mb-4 p-4 rounded-xl bg-accent border border-accent-foreground/10">
+              <div className="flex items-start gap-3">
+                <SparklesIcon className="w-4 h-4 text-primary mt-0.5 shrink-0" />
+                <p className="text-sm text-foreground">
+                  <strong>Fit chart for {profile.name}</strong> — {collegeFit.length} colleges matched to your interests and goals. Includes reach, match, and safety options.
+                </p>
               </div>
-            );
-          })}
-        </div>
+            </div>
+            <div className="flex flex-col gap-4">
+              {collegeFit.map((school) => (
+                <CollegeFitCard key={school.school} school={school} />
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

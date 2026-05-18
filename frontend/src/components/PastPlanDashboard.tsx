@@ -4,7 +4,6 @@ import {
   BookOpenIcon,
   CheckCircle2Icon,
   CircleIcon,
-  GlobeIcon,
   TargetIcon,
 } from 'lucide-react';
 import {
@@ -22,10 +21,8 @@ import {
 } from 'recharts';
 
 const CHART = {
-  stepDone: `#2563eb`,
-  stepRemain: `#93c5fd`,
-  milestoneDone: `#10b981`,
-  milestoneRemain: `#a7f3d0`,
+  taskDone: `#2563eb`,
+  taskRemain: `#93c5fd`,
   barDone: `#2563eb`,
   barRemain: `#e2e8f0`,
   emptyRing: `#e2e8f0`,
@@ -34,13 +31,7 @@ const CHART = {
 } as const;
 import type { SavedPlan } from '../types';
 import PastPlanStepRow from './PastPlanStepRow';
-import {
-  getCompletedMilestoneIndexes,
-  getCompletedStepIds,
-  overallPlanProgress,
-  planMilestoneProgress,
-  planStepProgress,
-} from '../lib/planProgress';
+import { getCompletedTaskIds, overallPlanProgress } from '../lib/planProgress';
 
 interface PastPlanDashboardProps {
   plan: SavedPlan;
@@ -52,28 +43,19 @@ function withProgress(plan: SavedPlan, patch: Partial<NonNullable<SavedPlan['pro
   return {
     ...plan,
     progress: {
-      completedStepIds: getCompletedStepIds(plan),
-      completedMilestoneIndexes: getCompletedMilestoneIndexes(plan),
-      stepDetails: plan.progress?.stepDetails,
+      completedTaskIds: getCompletedTaskIds(plan),
+      taskDetails: plan.progress?.taskDetails,
       ...patch,
     },
   };
 }
 
-function toggleStep(plan: SavedPlan, stepId: string): SavedPlan {
-  const current = getCompletedStepIds(plan);
-  const completedStepIds = current.includes(stepId)
-    ? current.filter((id) => id !== stepId)
-    : [...current, stepId];
-  return withProgress(plan, { completedStepIds });
-}
-
-function toggleMilestone(plan: SavedPlan, index: number): SavedPlan {
-  const current = getCompletedMilestoneIndexes(plan);
-  const completedMilestoneIndexes = current.includes(index)
-    ? current.filter((i) => i !== index)
-    : [...current, index];
-  return withProgress(plan, { completedMilestoneIndexes });
+function toggleTask(plan: SavedPlan, taskId: string): SavedPlan {
+  const current = getCompletedTaskIds(plan);
+  const completedTaskIds = current.includes(taskId)
+    ? current.filter((id) => id !== taskId)
+    : [...current, taskId];
+  return withProgress(plan, { completedTaskIds });
 }
 
 export default function PastPlanDashboard({
@@ -82,35 +64,23 @@ export default function PastPlanDashboard({
   onUpdatePlan,
 }: PastPlanDashboardProps) {
   const overall = overallPlanProgress(plan);
-  const steps = planStepProgress(plan);
-  const milestones = planMilestoneProgress(plan);
-  const completedSteps = getCompletedStepIds(plan);
-  const completedMilestones = getCompletedMilestoneIndexes(plan);
+  const completedTasks = getCompletedTaskIds(plan);
+  const totalTasks = plan.guide.tasks.length;
+
   const pieData =
-    steps.total + milestones.total === 0
+    totalTasks === 0
       ? [{ name: `Not started`, value: 1, fill: CHART.emptyRing }]
       : [
-          { name: `Steps done`, value: steps.completed, fill: CHART.stepDone },
+          { name: `Tasks done`, value: overall.completed, fill: CHART.taskDone },
           {
-            name: `Steps remaining`,
-            value: Math.max(0, steps.total - steps.completed),
-            fill: CHART.stepRemain,
-          },
-          { name: `Milestones done`, value: milestones.completed, fill: CHART.milestoneDone },
-          {
-            name: `Milestones remaining`,
-            value: Math.max(0, milestones.total - milestones.completed),
-            fill: CHART.milestoneRemain,
+            name: `Tasks remaining`,
+            value: Math.max(0, totalTasks - overall.completed),
+            fill: CHART.taskRemain,
           },
         ].filter((d) => d.value > 0);
 
   const barData = [
-    { label: 'Steps', done: steps.completed, remaining: Math.max(0, steps.total - steps.completed) },
-    {
-      label: 'Milestones',
-      done: milestones.completed,
-      remaining: Math.max(0, milestones.total - milestones.completed),
-    },
+    { label: 'Tasks', done: overall.completed, remaining: Math.max(0, totalTasks - overall.completed) },
   ];
 
   useEffect(() => {
@@ -144,15 +114,17 @@ export default function PastPlanDashboard({
             Back to plans
           </button>
           <div className="flex items-start gap-3">
-            <GlobeIcon className="w-5 h-5 mt-1 shrink-0 opacity-80" />
+            <TargetIcon className="w-5 h-5 mt-1 shrink-0 opacity-80" />
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-white/60 mb-1">
                 Plan dashboard
               </p>
-              <h2 id="plan-dashboard-title" className="text-xl sm:text-2xl font-bold font-serif">{plan.track.title}</h2>
-              <p className="text-sm text-white/75 mt-1 line-clamp-2">{plan.guide.overview}</p>
+              <h2 id="plan-dashboard-title" className="text-xl sm:text-2xl font-bold font-serif">{plan.track.label}</h2>
+              <p className="text-sm text-white/75 mt-1 line-clamp-2">
+                {plan.guide.tasks[0]?.match_reasoning ?? `${totalTasks} tasks`}
+              </p>
               <p className="text-xs text-white/50 mt-2">
-                Estimated: {plan.guide.estimatedDuration}
+                {totalTasks} tasks · {overall.percent}% complete
               </p>
             </div>
           </div>
@@ -164,12 +136,12 @@ export default function PastPlanDashboard({
               <div className="text-xs text-muted-foreground mt-1">Overall progress</div>
             </div>
             <div className="p-4 rounded-2xl bg-muted border border-border text-center">
-              <div className="text-2xl font-bold text-foreground">{steps.completed}/{steps.total}</div>
-              <div className="text-xs text-muted-foreground mt-1">Steps complete</div>
+              <div className="text-2xl font-bold text-foreground">{overall.completed}/{totalTasks}</div>
+              <div className="text-xs text-muted-foreground mt-1">Tasks complete</div>
             </div>
             <div className="p-4 rounded-2xl bg-muted border border-border text-center">
-              <div className="text-2xl font-bold text-foreground">{milestones.completed}/{milestones.total}</div>
-              <div className="text-xs text-muted-foreground mt-1">Milestones</div>
+              <div className="text-2xl font-bold text-foreground">{plan.guide.tasks.reduce((s, t) => s + t.action_items.length, 0)}</div>
+              <div className="text-xs text-muted-foreground mt-1">Action items</div>
             </div>
           </div>
           <div className="grid lg:grid-cols-2 gap-6">
@@ -222,7 +194,7 @@ export default function PastPlanDashboard({
                 </ResponsiveContainer>
               </div>
               <p className="text-xs text-muted-foreground text-center mt-2">
-                Mark steps below to update your charts
+                Mark tasks below to update your charts
               </p>
             </div>
             <div className="p-5 rounded-2xl border border-border bg-card shadow-custom">
@@ -250,55 +222,26 @@ export default function PastPlanDashboard({
           <div className="p-5 rounded-2xl border border-border bg-card shadow-custom">
             <h3 className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2">
               <BookOpenIcon className="w-4 h-4 text-primary" />
-              Step-by-step instructions
+              Tasks
             </h3>
             <p className="text-xs text-muted-foreground mb-4">
               Click the <strong className="text-foreground">numbered circle</strong> for detailed Amazon Bedrock
-              guidance. Click the step title to mark complete.
+              guidance. Click the task title to mark complete.
             </p>
             <div className="flex flex-col gap-3">
-              {plan.guide.steps.map((step, index) => (
+              {plan.guide.tasks.map((task, index) => (
                 <PastPlanStepRow
-                  key={step.id}
+                  key={task.task_id}
                   plan={plan}
-                  step={step}
+                  task={task}
                   index={index}
-                  done={completedSteps.includes(step.id)}
+                  done={completedTasks.includes(task.task_id)}
                   onUpdatePlan={onUpdatePlan}
-                  onToggleComplete={() => onUpdatePlan(toggleStep(plan, step.id))}
+                  onToggleComplete={() => onUpdatePlan(toggleTask(plan, task.task_id))}
                 />
               ))}
             </div>
           </div>
-          {plan.guide.weeklyMilestones.length > 0 && (
-            <div className="p-5 rounded-2xl border border-border bg-card shadow-custom">
-              <h3 className="text-sm font-semibold text-foreground mb-4">Weekly milestones</h3>
-              <div className="flex flex-col gap-2">
-                {plan.guide.weeklyMilestones.map((milestone, index) => {
-                  const done = completedMilestones.includes(index);
-                  return (
-                    <button
-                      key={milestone}
-                      type="button"
-                      onClick={() => onUpdatePlan(toggleMilestone(plan, index))}
-                      className={`flex items-center gap-3 p-3 rounded-xl border text-left text-sm transition-all ${
-                        done
-                          ? 'bg-emerald-muted/30 border-emerald/30 text-foreground'
-                          : 'bg-muted border-border hover:border-primary/30 text-muted-foreground'
-                      }`}
-                    >
-                      {done ? (
-                        <CheckCircle2Icon className="w-4 h-4 text-emerald shrink-0" />
-                      ) : (
-                        <CircleIcon className="w-4 h-4 shrink-0" />
-                      )}
-                      {milestone}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

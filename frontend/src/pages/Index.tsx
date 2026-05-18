@@ -117,11 +117,11 @@ export default function Index() {
   const handleGuideReady = useCallback(
     async (guide: ActionGuide) => {
       if (!session || !profile || !selectedTrack || viewingSaved) return;
-      const saveKey = `${selectedTrack.id}:${guide.trackId}`;
+      const saveKey = `${selectedTrack.track_id}:${guide.track_id}`;
       if (savedPlanKeyRef.current === saveKey) return;
       savedPlanKeyRef.current = saveKey;
 
-      const existing = pastPlans.find((p) => p.track.id === selectedTrack.id);
+      const existing = pastPlans.find((p) => p.track.track_id === selectedTrack.track_id);
       const plan = buildSavedPlan(session.userId, profile, selectedTrack, guide, existing?.id);
       if (existing?.progress) plan.progress = existing.progress;
       await savePastPlan(plan);

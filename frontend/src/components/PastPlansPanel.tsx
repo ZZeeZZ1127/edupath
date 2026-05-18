@@ -1,9 +1,9 @@
 import {
   ArrowRightIcon,
   CalendarIcon,
-  ClockIcon,
   HistoryIcon,
   SparklesIcon,
+  TargetIcon,
 } from 'lucide-react';
 import type { SavedPlan, StudentProfile } from '../types';
 import { overallPlanProgress } from '../lib/planProgress';
@@ -101,10 +101,10 @@ export default function PastPlansPanel({
                       </span>
                     </div>
                     <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors">
-                      {plan.track.title}
+                      {plan.track.label}
                     </h3>
                     <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                      {plan.guide.overview}
+                      {plan.guide.tasks[0]?.match_reasoning ?? `${plan.guide.tasks.length} tasks`}
                     </p>
                   </div>
                   <ArrowRightIcon className="w-5 h-5 text-muted-foreground group-hover:text-primary shrink-0 mt-1" />
@@ -115,10 +115,9 @@ export default function PastPlansPanel({
                     {formatDate(plan.createdAt)}
                   </span>
                   <span className="flex items-center gap-1">
-                    <ClockIcon className="w-3.5 h-3.5" />
-                    {plan.guide.estimatedDuration}
+                    <TargetIcon className="w-3.5 h-3.5" />
+                    {plan.guide.tasks.length} tasks
                   </span>
-                  <span>{plan.guide.steps.length} steps</span>
                   <span className="text-emerald font-medium">
                     {overallPlanProgress(plan).percent}% progress
                   </span>
