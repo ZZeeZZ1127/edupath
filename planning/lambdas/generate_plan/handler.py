@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from db import client as db
 from bedrock_utils import call_bedrock
 from s3_utils import save_plan
+from shared.responses import ok, error
 
 _SYSTEM_PROMPT = """You are an academic advisor AI for EduPath, a college planning assistant for K-12 students.
 
@@ -113,17 +114,11 @@ def handler(event, context):
 
         profile = db.get_profile(user_id)
         if not profile:
-            return {
-                "statusCode": 400,
-                "body": json.dumps({"error": "profile not found — complete onboarding first"})
-            }
+            return error(400, "profile not found — complete onboarding first")
 
         track_status = profile.get("currentTrackStatus")
         if not track_status or track_status.get("status") != "active":
-            return {
-                "statusCode": 400,
-                "body": json.dumps({"error": "no active track — select a track first"})
-            }
+            return error(400, "no active track — select a track first")
 
         user_message = _build_plan_prompt(profile, track_status)
         plan = call_bedrock(_SYSTEM_PROMPT, user_message)
@@ -132,15 +127,11 @@ def handler(event, context):
 
         _append_plan_entry(user_id, profile, track_status, plan)
 
-        return {
-            "statusCode": 200,
-            "headers": {"Access-Control-Allow-Origin": "*"},
-            "body": json.dumps({"plan": plan})
-        }
+        return ok({"plan": plan})
 
     except Exception as e:
         print("Error:", e)
-        return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
+        return error(500, str(e))
 
 
 def _append_plan_entry(user_id: str, profile: dict, track: dict, plan: dict) -> None:

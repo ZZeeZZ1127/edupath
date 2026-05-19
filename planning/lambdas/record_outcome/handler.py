@@ -4,6 +4,7 @@ import urllib.request
 from datetime import datetime, timezone
 
 from db import client as db
+from shared.responses import ok, error
 
 
 def _trigger_system1(user_id: str) -> None:
@@ -38,36 +39,18 @@ def handler(event, context):
         abort_track = body.get("abort_track", False)
 
         if result not in ("accepted", "rejected", "pending"):
-            return {
-                "statusCode": 400,
-                "body": json.dumps({"error": "result must be 'accepted', 'rejected', or 'pending'"})
-            }
+            return error(400, "result must be 'accepted', 'rejected', or 'pending'")
 
         profile = db.get_profile(user_id)
         if not profile:
-            return {
-                "statusCode": 400,
-                "body": json.dumps({"error": "profile not found — complete onboarding first"})
-            }
+            return error(400, "profile not found — complete onboarding first")
 
         track_status = profile.get("currentTrackStatus")
         if not track_status or track_status.get("status") != "active":
-            return {
-                "statusCode": 400,
-                "body": json.dumps({"error": "no active track — select a track first"})
-            }
+            return error(400, "no active track — select a track first")
 
         if not abort_track and not task_id:
-            return {
-                "statusCode": 400,
-                "body": json.dumps({"error": "task_id is required when not aborting a track"})
-            }
-
-        if not abort_track:
-            db.record_outcome(user_id, task_id, result)
-
-        profile = db.get_profile(user_id)
-        track_status = profile["currentTrackStatus"]
+            return error(400, "task_id is required when not aborting a track")
 
         recalibration_triggered = False
 
@@ -77,14 +60,25 @@ def handler(event, context):
             _trigger_system1(user_id)
             recalibration_triggered = True
             _append_outcome_entry(user_id, track_status, None, "aborted")
-        elif _all_tasks_resolved(track_status):
-            track_status["status"] = "completed"
-            db.set_current_track(user_id, track_status)
-            _trigger_system1(user_id)
-            recalibration_triggered = True
-            _append_outcome_entry(user_id, track_status, None, "completed")
         else:
-            _append_outcome_entry(user_id, track_status, task_id, result)
+            db.record_outcome(user_id, task_id, result)
+            # Mark the task completed in the local copy so the check below
+            # sees the latest state without a DynamoDB re-read (which would
+            # be eventually-consistent and could return stale data).
+            for task in track_status.get("tasks", []):
+                if task.get("task_id") == task_id:
+                    task["completed"] = True
+                    break
+
+            if _all_tasks_resolved(track_status):
+                track_status["status"] = "completed"
+                _trigger_system1(user_id)
+                recalibration_triggered = True
+                _append_outcome_entry(user_id, track_status, None, "completed")
+            else:
+                _append_outcome_entry(user_id, track_status, task_id, result)
+
+            db.set_current_track(user_id, track_status)
 
         response_body = {
             "success": True,
@@ -93,15 +87,11 @@ def handler(event, context):
         if recalibration_triggered:
             response_body["recalibration_triggered"] = True
 
-        return {
-            "statusCode": 200,
-            "headers": {"Access-Control-Allow-Origin": "*"},
-            "body": json.dumps(response_body)
-        }
+        return ok(response_body)
 
     except Exception as e:
         print("Error:", e)
-        return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
+        return error(500, str(e))
 
 
 def _append_outcome_entry(user_id: str, track_status: dict, task_id: str | None, result: str) -> None:

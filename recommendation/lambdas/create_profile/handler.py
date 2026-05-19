@@ -1,5 +1,6 @@
 import json
 from db import client as db
+from shared.responses import ok, error
 
 
 def handler(event, context):
@@ -8,10 +9,7 @@ def handler(event, context):
         body = json.loads(event.get("body", "{}"))
         user_id = body.get("userId")
         if not user_id:
-            return {
-                "statusCode": 400,
-                "body": json.dumps({"error": "userId is required"})
-            }
+            return error(400, "userId is required")
 
         profile = {
             "userId": user_id,
@@ -27,12 +25,8 @@ def handler(event, context):
 
         db.put_profile(user_id, profile)
 
-        return {
-            "statusCode": 200,
-            "headers": {"Access-Control-Allow-Origin": "*"},
-            "body": json.dumps({"success": True})
-        }
+        return ok({"success": True})
 
     except Exception as e:
         print("Error:", e)
-        return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
+        return error(500, str(e))

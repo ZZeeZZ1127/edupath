@@ -9,7 +9,7 @@ def _get_s3():
     global _s3_client
     if _s3_client is None:
         import boto3
-        _s3_client = boto3.client("s3", region_name="us-east-1")
+        _s3_client = boto3.client("s3", region_name=os.getenv("AWS_REGION", "us-east-1"))
     return _s3_client
 
 

@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timezone
 from db import client as db
 from bedrock_utils import call_bedrock
+from shared.responses import ok, error
 
 
 # Load prompt templates
@@ -26,17 +27,11 @@ def handler(event, context):
         body = json.loads(event.get("body", "{}"))
         user_id = body.get("userId")
         if not user_id:
-            return {
-                "statusCode": 400,
-                "body": json.dumps({"error": "userId is required"})
-            }
+            return error(400, "userId is required")
 
         profile = db.get_profile(user_id)
         if not profile:
-            return {
-                "statusCode": 400,
-                "body": json.dumps({"error": "profile not found — complete onboarding first"})
-            }
+            return error(400, "profile not found — complete onboarding first")
 
         track_status = profile.get("currentTrackStatus")
         recalibration_block = ""
@@ -49,16 +44,10 @@ def handler(event, context):
         try:
             tracks = call_bedrock(SYSTEM_PROMPT, user_message)
         except Exception:
-            return {
-                "statusCode": 500,
-                "body": json.dumps({"error": "Bedrock call failed"})
-            }
+            return error(500, "Bedrock call failed")
 
         if not isinstance(tracks, list):
-            return {
-                "statusCode": 500,
-                "body": json.dumps({"error": "Bedrock returned unexpected format"})
-            }
+            return error(500, "Bedrock returned unexpected format")
 
         # Add missing track_ids if Bedrock didn't provide them
         for track in tracks:
@@ -75,15 +64,11 @@ def handler(event, context):
         # Persist conversation history so future prompts have memory
         _append_conversation_entry(user_id, profile, tracks, track_status)
 
-        return {
-            "statusCode": 200,
-            "headers": {"Access-Control-Allow-Origin": "*"},
-            "body": json.dumps({"tracks": tracks})
-        }
+        return ok({"tracks": tracks})
 
     except Exception as e:
         print("Error:", e)
-        return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
+        return error(500, str(e))
 
 
 def _build_user_message(profile: dict, recalibration_block: str) -> str:

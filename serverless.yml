@@ -59,6 +59,9 @@ provider:
 
 package:
   individually: true
+  patterns:
+    - '!**/__pycache__/**'
+    - '!**/*.pyc'
 
 functions:
   # ── System 1: Recommendation ──────────────────

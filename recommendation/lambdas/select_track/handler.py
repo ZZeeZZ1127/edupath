@@ -2,6 +2,7 @@ import json
 import uuid
 from datetime import datetime, timezone
 from db import client as db
+from shared.responses import ok, error
 
 
 def handler(event, context):
@@ -15,10 +16,7 @@ def handler(event, context):
         track = body.get("track")
 
         if not user_id or not track:
-            return {
-                "statusCode": 400,
-                "body": json.dumps({"error": "userId and track are required"})
-            }
+            return error(400, "userId and track are required")
 
         # Compute difficulty if not already set
         if not track.get("difficulty"):
@@ -44,12 +42,8 @@ def handler(event, context):
 
         db.set_current_track(user_id, track)
 
-        return {
-            "statusCode": 200,
-            "headers": {"Access-Control-Allow-Origin": "*"},
-            "body": json.dumps({"success": True})
-        }
+        return ok({"success": True})
 
     except Exception as e:
         print("Error:", e)
-        return {"statusCode": 500, "body": json.dumps({"error": str(e)})}
+        return error(500, str(e))
