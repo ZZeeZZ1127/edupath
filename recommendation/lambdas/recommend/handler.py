@@ -43,8 +43,9 @@ def handler(event, context):
 
         try:
             tracks = call_bedrock(SYSTEM_PROMPT, user_message)
-        except Exception:
-            return error(500, "Bedrock call failed")
+        except Exception as e:
+            print("Bedrock error:", e)
+            return error(500, f"Bedrock call failed: {e}")
 
         if not isinstance(tracks, list):
             return error(500, "Bedrock returned unexpected format")

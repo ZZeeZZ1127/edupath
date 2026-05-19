@@ -4,16 +4,15 @@
 # ═══════════════════════════════════════════════════════════════
 
 service: edupath
-frameworkVersion: "4"
+frameworkVersion: "3"
 
 provider:
   name: aws
   region: us-east-1
-  runtime: python3.12
+  runtime: python3.11
   stage: ${opt:stage, 'prod'}
 
   environment:
-    AWS_REGION: us-east-1
     PLAN_BUCKET: !Ref PlansBucket
 
   iam:
@@ -38,7 +37,7 @@ provider:
         - Effect: Allow
           Action:
             - bedrock:InvokeModel
-          Resource: arn:aws:bedrock:us-east-1::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0
+          Resource: "*"
 
   # ── API Gateway defaults ──────────────────────
   httpApi:
@@ -62,6 +61,8 @@ package:
   patterns:
     - '!**/__pycache__/**'
     - '!**/*.pyc'
+    - '!frontend/**'
+    - '!**/node_modules/**'
 
 functions:
   # ── System 1: Recommendation ──────────────────
@@ -90,6 +91,7 @@ functions:
 
   recommend:
     handler: recommendation/lambdas/recommend/handler.handler
+    timeout: 45
     package:
       patterns:
         - recommendation/**
@@ -114,6 +116,7 @@ functions:
 
   generate_plan:
     handler: planning/lambdas/generate_plan/handler.handler
+    timeout: 45
     package:
       patterns:
         - planning/**
@@ -125,6 +128,7 @@ functions:
 
   record_outcome:
     handler: planning/lambdas/record_outcome/handler.handler
+    timeout: 30
     package:
       patterns:
         - planning/**
