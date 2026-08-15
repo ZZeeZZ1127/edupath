@@ -40,22 +40,62 @@ EduPath is split into two coordinated systems that share a persistent student pr
 - Mobile responsive design
 - Multi-student / parent view
 - Interactive progress tracker (v2 feature)
+- Real authentication (see "Authentication" below)
+
+## Architecture
+
+The entire stack is defined in `serverless.yml` (Serverless Framework) and deployed as a single CloudFormation stack (`edupath-prod`) in `us-east-1`, account `037055844080`.
+
+- **Frontend** — React 19 + Vite 7 + TypeScript + Tailwind, built to a static bundle and served from S3 (`edupath-frontend-leo`).
+- **API** — one HTTP API (API Gateway V2) at `https://o4nv2xjy0e.execute-api.us-east-1.amazonaws.com` in front of 6 Python 3.11 Lambda functions:
+
+  | Route | Lambda |
+  |---|---|
+  | `POST /profile` | `create_profile` |
+  | `GET  /profile` | `get_profile` |
+  | `POST /recommend` | `recommend` |
+  | `POST /select-track` | `select_track` |
+  | `POST /plan` | `generate_plan` |
+  | `POST /outcome` | `record_outcome` |
+
+- **Storage** — DynamoDB table `studentProfiles` (composite key `userId` + `trackId`; the profile itself is stored under a constant `trackId` of `"PROFILE"`) and S3 bucket `edupath-plans-037055844080` for saved plans.
+- **AI** — Amazon Bedrock. Recommendations use `us.anthropic.claude-sonnet-4-5-20250929-v1:0`; plan generation uses `us.anthropic.claude-haiku-4-5-20251001-v1:0`.
+
+### Authentication (mocked)
+
+There is **no Cognito and no Amplify** in this project. The login/signup screens are UI only: any email/password is accepted, and the email address is lowercased and non-alphanumeric characters are replaced with `-` to produce the `userId` used as the DynamoDB key. For example, `maria@edupath.demo` becomes `maria-edupath-demo`.
+
+This is fine for a hackathon demo but is **not real authentication** — anyone who knows another user's email slug can read that profile. Do not treat this as production security.
 
 ## AWS Services Used
 
 | Service | Role |
 |---|---|
 | Amazon Bedrock | Core AI engine powering recommendation and plan generation |
-| AWS Lambda | Orchestrates backend logic — reads profile, calls Bedrock, writes results |
-| API Gateway | HTTP entry point for all frontend calls |
+| AWS Lambda | Backend logic — reads profile, calls Bedrock, writes results (6 functions) |
+| API Gateway (HTTP API, V2) | Single HTTP entry point for all frontend calls |
 | Amazon DynamoDB | Persistent student profile and conversation history store |
-| Amazon S3 | Stores generated application plans and college fit charts |
-| AWS Amplify | Hosts the web app with built-in CI/CD and Cognito integration |
-| Amazon Cognito | User authentication, tying sessions to persistent profiles |
+| Amazon S3 | Stores generated plans (`edupath-plans-037055844080`) and hosts the frontend (`edupath-frontend-leo`) |
+| Serverless Framework | Infrastructure-as-code; defines and deploys the whole stack |
 
-## Pre-existing Code or Templates
+## Deployment
 
-None. All code was written during the hackathon.
+Everything is deployed from `serverless.yml` with one command:
+
+```bash
+serverless deploy
+```
+
+This creates/updates the `edupath-prod` CloudFormation stack (region `us-east-1`). There is no AWS Console provisioning required — the Lambda functions, API Gateway routes, DynamoDB table, S3 bucket, and IAM role are all declared in `serverless.yml`. Bedrock model access must be enabled in the account.
+
+The frontend is built and uploaded to S3 separately:
+
+```bash
+cd frontend
+npm install
+npm run build
+# upload frontend/dist to the edupath-frontend-leo bucket
+```
 
 ## Getting Started
 
@@ -67,10 +107,25 @@ npm install
 npm run dev
 ```
 
-The frontend runs independently with mock AI services simulating Bedrock responses and `localStorage` for persistence. No AWS credentials needed for local development.
+With no `VITE_API_BASE_URL` set, the frontend runs entirely against mock AI (`frontend/src/services/mockAi.ts`) with `localStorage` for persistence — no AWS credentials or backend needed.
 
-To use the pre-built demo profile, log in with an email containing "maria" (e.g. `maria@demo.com`).
+To use the pre-built demo profile, log in with an email containing "maria" (e.g. `maria@edupath.demo`).
+
+### Frontend against the live backend
+
+Set `VITE_API_BASE_URL` to the API base URL in `frontend/.env`:
+
+```
+VITE_API_BASE_URL=https://o4nv2xjy0e.execute-api.us-east-1.amazonaws.com
+```
+
+When this is set, API calls (`/profile`, `/recommend`, `/select-track`, `/plan`) hit the live Lambda backend and Bedrock. Leave it empty or unset to fall back to mock data. This gate is implemented in `frontend/src/services/api.ts`.
 
 ### Backend (requires AWS account)
 
-Backend Lambda functions, API Gateway routes, DynamoDB tables, and S3 buckets are configured via the AWS Console. Bedrock model access must be enabled in your AWS account.
+```bash
+npm install -g serverless
+serverless deploy
+```
+
+Requires AWS credentials with permission to create the CloudFormation stack, Lambda functions, API Gateway, DynamoDB table, and S3 bucket, plus Bedrock model access enabled in the account.

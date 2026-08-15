@@ -11,6 +11,9 @@ import { generateActionGuide, generateTaskDetail, generateTrackRecommendations }
 
 const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, ``) ?? ``;
 
+/** Whether the app is talking to the live backend (`live`) or bundled demo data (`demo`). */
+export const dataMode: 'live' | 'demo' = API_BASE ? 'live' : 'demo';
+
 function storageKey(userId: string, suffix: string) {
   return `edupath:${suffix}:${userId}`;
 }
@@ -159,15 +162,11 @@ export async function fetchTrackRecommendations(
   pastPlans: SavedPlan[] = [],
   userId?: string
 ): Promise<TrackRecommendation[]> {
-  if (API_BASE) {
-    try {
-      const data = await postJson<{ tracks: TrackRecommendation[] }>(`/recommend`, {
-        userId: userId ?? profile.name.toLowerCase().replace(/[^a-z0-9]/g, `-`),
-      });
-      return data.tracks;
-    } catch {
-      /* fall through to mock */
-    }
+  if (dataMode === 'live') {
+    const data = await postJson<{ tracks: TrackRecommendation[] }>(`/recommend`, {
+      userId: userId ?? profile.name.toLowerCase().replace(/[^a-z0-9]/g, `-`),
+    });
+    return data.tracks;
   }
   return generateTrackRecommendations(profile, pastPlans);
 }
@@ -180,15 +179,11 @@ export async function fetchActionGuide(
   pastPlans: SavedPlan[] = [],
   userId?: string
 ): Promise<ActionGuide> {
-  if (API_BASE) {
-    try {
-      const uid = userId ?? profile.name.toLowerCase().replace(/[^a-z0-9]/g, `-`);
-      await selectTrack(uid, track);
-      const data = await postJson<{ plan: ActionGuide }>(`/plan`, { userId: uid });
-      return data.plan;
-    } catch {
-      /* fall through to mock */
-    }
+  if (dataMode === 'live') {
+    const uid = userId ?? profile.name.toLowerCase().replace(/[^a-z0-9]/g, `-`);
+    await selectTrack(uid, track);
+    const data = await postJson<{ plan: ActionGuide }>(`/plan`, { userId: uid });
+    return data.plan;
   }
   return generateActionGuide(profile, track, pastPlans);
 }
@@ -200,12 +195,10 @@ export async function fetchTaskDetail(
   track: TrackRecommendation,
   task: PlanTask
 ): Promise<TaskDetail> {
-  if (API_BASE) {
-    try {
-      throw new Error(`Not implemented`);
-    } catch {
-      /* fall through to mock */
-    }
+  if (dataMode === 'live') {
+    // No live task-detail endpoint yet — surface the failure rather than silently
+    // swapping in demo output.
+    throw new Error(`Task detail is not available from the live backend`);
   }
   return generateTaskDetail(profile, track, task);
 }

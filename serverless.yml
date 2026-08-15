@@ -34,9 +34,26 @@ provider:
           Resource: !Sub "${PlansBucket.Arn}/plans/*"
 
         # ── Bedrock ─────────────────────────────
+        # Invoking through a cross-region inference profile authorizes against
+        # BOTH the underlying foundation model (region varies at runtime) and
+        # the account-scoped inference profile.
         - Effect: Allow
           Action:
             - bedrock:InvokeModel
+          Resource:
+            - arn:aws:bedrock:*::foundation-model/anthropic.claude-sonnet-4-5-20250929-v1:0
+            - arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0
+            - arn:aws:bedrock:${aws:region}:${aws:accountId}:inference-profile/us.anthropic.claude-sonnet-4-5-20250929-v1:0
+            - arn:aws:bedrock:${aws:region}:${aws:accountId}:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0
+
+        # ── AWS Marketplace (required to invoke Claude Haiku 4.5) ──
+        # Haiku 4.5 is Marketplace-distributed; the invoking role must be able
+        # to view/subscribe to verify model access, even though the account is
+        # already subscribed.
+        - Effect: Allow
+          Action:
+            - aws-marketplace:Subscribe
+            - aws-marketplace:ViewSubscriptions
           Resource: "*"
 
   # ── API Gateway defaults ──────────────────────

@@ -80,7 +80,7 @@ export default function SignupPage({ onSignup = () => {}, onBack = () => {} }: S
           </form>
 
           <p className="text-center text-xs text-muted-foreground mt-6">
-            Protected by AWS Cognito · Profile stored in DynamoDB
+            Demo sign-up — no real account required
           </p>
         </div>
       </div>

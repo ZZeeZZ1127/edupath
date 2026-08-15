@@ -128,7 +128,7 @@ export default function LoginPage({ onLogin = () => {}, onSignup = () => {}, onB
               onClick={handleLogin}
               className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm hover:opacity-90 transition-all shadow-custom active:scale-95"
             >
-              Sign in with Cognito
+              Sign in to continue
             </button>
 
             <div className="flex items-center gap-3 my-6">
@@ -145,7 +145,7 @@ export default function LoginPage({ onLogin = () => {}, onSignup = () => {}, onB
             </button>
 
             <p className="text-center text-xs text-muted-foreground mt-6">
-              Protected by AWS Cognito · FERPA-aligned data practices
+              Demo sign-in — no real account required
             </p>
           </div>
 

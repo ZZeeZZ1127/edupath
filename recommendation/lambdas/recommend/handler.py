@@ -42,7 +42,7 @@ def handler(event, context):
         user_message = _build_user_message(profile, recalibration_block)
 
         try:
-            tracks = call_bedrock(SYSTEM_PROMPT, user_message)
+            tracks = call_bedrock(SYSTEM_PROMPT, user_message, max_tokens=2000)
         except Exception as e:
             print("Bedrock error:", e)
             return error(500, f"Bedrock call failed: {e}")
@@ -84,9 +84,9 @@ def _build_user_message(profile: dict, recalibration_block: str) -> str:
         f"- Goals: {', '.join(profile.get('goals', [])) if isinstance(profile.get('goals'), list) else (profile.get('goals') or 'none')}\n"
         f"- Past conversation: {profile.get('conversationHistory') or 'none'}\n"
         f"{recalibration_block}\n"
-        f"Return a JSON array of 3 tracks. Each track:\n"
+        f"Return a JSON array of 3 tracks, each with exactly 3 tasks. Each track:\n"
         f'{{"track_id": "uuid", "label": "short name",\n'
-        f' "description": "2-3 sentences referencing student\'s specific interests",\n'
+        f' "description": "1-2 sentences referencing student\'s specific interests",\n'
         f' "tasks": [{{"task_id": "uuid", "label": "task name",\n'
         f'             "category": "research|internship|college|competition|extracurricular",\n'
         f'             "difficulty": 0-100, "description": "what to do",\n'

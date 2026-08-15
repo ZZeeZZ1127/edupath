@@ -3,6 +3,9 @@ import os
 import re
 import time
 
+DEFAULT_MODEL_ID = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+HAIKU_MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+
 _bedrock_client = None
 
 
@@ -14,7 +17,7 @@ def _get_bedrock():
     return _bedrock_client
 
 
-def call_bedrock(system_prompt: str, user_message: str, retry: bool = True) -> list | dict:
+def call_bedrock(system_prompt: str, user_message: str, retry: bool = True, max_tokens: int = 2000, model_id: str = DEFAULT_MODEL_ID) -> list | dict:
     """
     Call Amazon Bedrock (Claude Sonnet 4.5) with the given prompts.
     Parses JSON from the response, stripping markdown fences if present.
@@ -22,13 +25,13 @@ def call_bedrock(system_prompt: str, user_message: str, retry: bool = True) -> l
     """
     body = json.dumps({
         "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": 4096,
+        "max_tokens": max_tokens,
         "system": system_prompt,
         "messages": [{"role": "user", "content": user_message}]
     })
 
     response = _get_bedrock().invoke_model(
-        modelId="us.anthropic.claude-sonnet-4-5-20250929-v1:0",
+        modelId=model_id,
         body=body,
         contentType="application/json",
         accept="application/json"
@@ -47,5 +50,5 @@ def call_bedrock(system_prompt: str, user_message: str, retry: bool = True) -> l
         if retry:
             print("Malformed JSON response, retrying once...")
             time.sleep(0.5)
-            return call_bedrock(system_prompt, user_message, retry=False)
+            return call_bedrock(system_prompt, user_message, retry=False, max_tokens=max_tokens, model_id=model_id)
         raise

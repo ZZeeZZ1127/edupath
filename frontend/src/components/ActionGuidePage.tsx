@@ -17,6 +17,7 @@ import type { ActionGuide, SavedPlan, StudentProfile, TrackRecommendation } from
 import { fetchActionGuide } from '../services/api';
 import WorkflowStepper from './WorkflowStepper';
 import EduPathBrand from './EduPathBrand';
+import DataModeBadge from './DataModeBadge';
 
 interface ActionGuidePageProps {
   profile: StudentProfile;
@@ -106,6 +107,7 @@ export default function ActionGuidePage({
     <div data-cmp="ActionGuidePage" className="min-h-screen bg-background flex flex-col">
       <header className="flex items-center gap-3 px-6 py-4 border-b border-border bg-card">
         <EduPathBrand onHome={onHome} iconSize="sm" />
+        <DataModeBadge />
         <button
           type="button"
           onClick={onGoToHub}

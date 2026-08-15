@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timezone
 
 from db import client as db
-from bedrock_utils import call_bedrock
+from bedrock_utils import call_bedrock, HAIKU_MODEL_ID
 from s3_utils import save_plan
 from shared.responses import ok, error
 
@@ -17,13 +17,13 @@ Rules:
 - Action items must be ordered by priority (most time-sensitive first).
 - Return ONLY valid JSON. No preamble, no explanation, no markdown fences.
 
-For Grade 11-12 students: also include a college_fit_chart (6-8 schools) as part of the plan. For other grades: set college_fit_chart to null."""
+For Grade 11-12 students: also include a college_fit_chart (3 schools) as part of the plan. For other grades: set college_fit_chart to null."""
 
 
 def _build_plan_prompt(profile: dict, track: dict) -> str:
-    name = profile["name"]
-    age = profile["age"]
-    grade = profile["grade"]
+    name = profile.get("name", "Unknown")
+    age = profile.get("age", "Unknown")
+    grade = profile.get("grade") or 0
     interests = ", ".join(profile.get("interests", [])) or "none"
     extracurriculars = ", ".join(profile.get("extracurriculars", [])) or "none"
     goals_raw = profile.get("goals", [])
@@ -70,8 +70,8 @@ def _build_plan_prompt(profile: dict, track: dict) -> str:
         '        "application": "YYYY-MM-DD or null",',
         '        "financial_aid": "YYYY-MM-DD or null"',
         "      },",
-        '      "action_items": ["ordered list of specific, actionable steps"],',
-        '      "match_reasoning": "2-3 sentences explaining why this fits this student specifically",',
+        '      "action_items": ["3 specific, ordered action steps"],',
+        '      "match_reasoning": "1 sentence explaining why this fits this student specifically",',
         '      "status": "pending"',
         "    }",
         "  ],",
@@ -85,12 +85,12 @@ def _build_plan_prompt(profile: dict, track: dict) -> str:
         lines.extend([
             "",
             "Additionally, generate a college_fit_chart as part of the plan object. "
-            "Include 6-8 schools that match the student's interests, goals, and grade level. For each school:",
+            "Include 3 schools that match the student's interests, goals, and grade level. For each school:",
             "",
             '{',
             '  "school": "School Name",',
             '  "fit_type": "reach | match | safety",',
-            '  "why_it_fits": "2 sentences referencing the student\'s specific interests and goals",',
+            '  "why_it_fits": "1 sentence referencing the student\'s specific interests and goals",',
             '  "requirements": {',
             '    "gpa": "3.5+",',
             '    "test_scores": "SAT 1400+ or ACT 32+",',
@@ -121,7 +121,7 @@ def handler(event, context):
             return error(400, "no active track — select a track first")
 
         user_message = _build_plan_prompt(profile, track_status)
-        plan = call_bedrock(_SYSTEM_PROMPT, user_message)
+        plan = call_bedrock(_SYSTEM_PROMPT, user_message, max_tokens=2000, model_id=HAIKU_MODEL_ID)
 
         save_plan(user_id, track_status["track_id"], plan)
 

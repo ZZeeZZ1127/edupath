@@ -1,5 +1,6 @@
 import os
 import boto3
+from decimal import Decimal
 from botocore.exceptions import ClientError
 
 # Initialize the DynamoDB resource
@@ -26,6 +27,17 @@ def get_profile(user_id: str) -> dict | None:
         return None
 
 
+def _sanitize(value):
+    """Recursively convert Python floats to Decimal — DynamoDB rejects floats."""
+    if isinstance(value, float):
+        return Decimal(str(value))
+    if isinstance(value, dict):
+        return {k: _sanitize(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_sanitize(v) for v in value]
+    return value
+
+
 def set_current_track(user_id: str, track_status: dict) -> None:
     """Write the current track status for a student."""
     try:
@@ -36,7 +48,7 @@ def set_current_track(user_id: str, track_status: dict) -> None:
             },
             UpdateExpression="SET currentTrackStatus = :track_status",
             ExpressionAttributeValues={
-                ':track_status': track_status
+                ':track_status': _sanitize(track_status)
             }
         )
     except ClientError as e:

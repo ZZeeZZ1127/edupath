@@ -61,7 +61,15 @@ def handler(event, context):
             recalibration_triggered = True
             _append_outcome_entry(user_id, track_status, None, "aborted")
         else:
-            db.record_outcome(user_id, task_id, result)
+            # Record the outcome on the local copy so the single write below
+            # persists it. (The old db.record_outcome list_append was followed
+            # by set_current_track with the stale local copy, which overwrote
+            # the appended outcome — so every outcome was silently lost.)
+            track_status.setdefault("outcomes", []).append({
+                "taskId": task_id,
+                "result": result,
+            })
+
             # Mark the task completed in the local copy so the check below
             # sees the latest state without a DynamoDB re-read (which would
             # be eventually-consistent and could return stale data).
