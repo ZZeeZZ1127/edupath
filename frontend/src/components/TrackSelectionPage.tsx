@@ -18,6 +18,7 @@ import EduPathBrand from './EduPathBrand';
 import DataModeBadge from './DataModeBadge';
 
 interface TrackSelectionPageProps {
+  userId: string;
   profile: StudentProfile;
   pastPlans?: SavedPlan[];
   onSelectTrack: (track: TrackRecommendation) => void;
@@ -49,6 +50,7 @@ function dominantCategory(tasks: TrackTask[]): string {
 }
 
 export default function TrackSelectionPage({
+  userId,
   profile,
   pastPlans = [],
   onSelectTrack,
@@ -68,7 +70,7 @@ export default function TrackSelectionPage({
     (async () => {
       setLoading(true);
       try {
-        const result = await fetchTrackRecommendations(profile, pastPlans);
+        const result = await fetchTrackRecommendations(profile, pastPlans, userId);
         if (!cancelled) setTracks(result);
       } catch {
         if (!cancelled) toast.error(`Could not load recommendations. Please try again.`);

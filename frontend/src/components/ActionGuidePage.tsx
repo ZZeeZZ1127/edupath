@@ -20,6 +20,7 @@ import EduPathBrand from './EduPathBrand';
 import DataModeBadge from './DataModeBadge';
 
 interface ActionGuidePageProps {
+  userId: string;
   profile: StudentProfile;
   track: TrackRecommendation;
   pastPlans?: SavedPlan[];
@@ -40,6 +41,7 @@ const FIT_COLORS: Record<string, string> = {
 };
 
 export default function ActionGuidePage({
+  userId,
   profile,
   track,
   pastPlans = [],
@@ -80,7 +82,7 @@ export default function ActionGuidePage({
       setGuide(null);
       setLoading(true);
       try {
-        const result = await fetchActionGuide(profile, track, pastPlansRef.current);
+        const result = await fetchActionGuide(profile, track, pastPlansRef.current, userId);
         if (cancelled) return;
         setGuide(result);
         setLoading(false);

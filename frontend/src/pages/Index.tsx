@@ -193,6 +193,7 @@ export default function Index() {
 
       {session && profile && page === `recommendations` && (
         <TrackSelectionPage
+          userId={session.userId}
           profile={profile}
           pastPlans={pastPlans}
           onSelectTrack={handleSelectTrack}
@@ -205,6 +206,7 @@ export default function Index() {
 
       {session && profile && selectedTrack && page === `action-guide` && (
         <ActionGuidePage
+          userId={session.userId}
           profile={profile}
           track={selectedTrack}
           pastPlans={pastPlans}
